@@ -1,0 +1,15 @@
+*- PALABRAS RESERVADAS -*
+*- OPERADORES-*
+=
+-
+*
+/
+(
+)
+
+*- VARIABLES / CONSTANTES -*
+c
+d
+e
+21
+4
