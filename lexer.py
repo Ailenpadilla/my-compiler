@@ -112,8 +112,30 @@ def ejecutar_lexer():
     path_lexter = Path('./resources/lexer_test.txt')
     data = path_lexter.read_text()
     lexer.input(data)
+    tabla_simbolos = []
     while True:
         token = lexer.token()
         if not token:
             break
         print(f'TOKEN: {token.type} LEXEMA: {token.value}')
+        # Guardar variables (solo nombre)
+        if token.type == 'VARIABLE':
+            tabla_simbolos.append({'nombre': token.value, 'tipo': '', 'valor': ''})
+        # Guardar constantes (nombre, tipo, valor)
+        elif token.type in ('N_ENTERO', 'N_FLOAT', 'CADENA', 'DATE'):
+            tipo = {
+                'N_ENTERO': 'Int',
+                'N_FLOAT': 'Float',
+                'CADENA': 'String',
+                'DATE': 'Date'
+            }[token.type]
+            nombre_constante = f"_{token.value}"
+            tabla_simbolos.append({'nombre': nombre_constante, 'tipo': tipo, 'valor': token.value})
+
+    # Escribir la tabla de símbolos en un archivo
+    output_path = Path('./resources/tabla_simbolos.txt')
+    with output_path.open('w', encoding='utf-8') as f:
+        f.write(f"{'Nombre':<20}{'Tipo de Dato':<15}{'Valor':<30}\n")
+        f.write('-' * 65 + '\n')
+        for entry in tabla_simbolos:
+            f.write(f"{entry['nombre']:<20}{entry['tipo']:<15}{str(entry['valor']):<30}\n")
