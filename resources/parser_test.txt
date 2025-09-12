@@ -3,10 +3,33 @@
 #+ este es un comentario
  multilinea +#
 
+
+#+ Entradas y salidas +#
+
 write("hola mundo")
 read(var1)
 
-var1:=21
+
+#+ Asignaciones +#
+
+a := 99999.99
+a := 99.
+a := .9999
+a := 99
+
+b := "@sdADaSjfla%dfg"
+b := "asldk  fh sjf"
+
+c := d*(e+21)/4
+c := d*(e-21)/4
+
+x := 27 - c
+x := r + 500
+x := 34 * 3
+x := z / f
+
+
+#+ Declaracion de variables +#
 
 init {
     a1, b1 : Float
@@ -14,28 +37,36 @@ init {
     p1, p2, p3 : String
 }
 
+#+ While +#
+
 while (a>b) {
-    var1:=21
-    if (a>c) {
-        var1:=23
-    }
+    b:=b+1
 }
 
-if (not a>b) {
-    var1:=21
-    if (a>c) {
-        var1:=23
-    }
+#+ If y condiciones +#
+
+if (a>b) {
+    a:=1
 }
 
 if (a>b and b>c) {
-    var1:=21
+    a:=1
 } else {
-    var1:=22
+    a:=2
     if (a>c) {
-        var1:=23
+        a:=3
     }
 }
+
+if (not a>=b) {
+    a:=1
+}
+
+if (a==b or c<>d) {
+    a:=d
+}
+
+#+ Funciones especiales +#
 
 equalExpressions(1+2,1*5,55,a)
 

@@ -181,6 +181,8 @@ def p_elemento_expresion(p):
 def p_elemento(p):
     '''elemento : N_ENTERO
                 | VARIABLE
+                | N_FLOAT
+                | CADENA
     '''
     print(f'{p.slice[1].type} -> elemento') 
     p[0] = p[1]
