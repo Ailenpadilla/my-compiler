@@ -63,26 +63,29 @@ def p_sentencia(p):
 def p_write(p):
     '''write : WRITE A_PARENTESIS CADENA C_PARENTESIS
     '''
-    print(f'WRITE ( {p.slice[3].type} ) -> sentencia')
+    print(f'write ( CADENA ) -> write')
     
     
 def p_read(p):
     '''read : READ A_PARENTESIS VARIABLE C_PARENTESIS
     '''
-    print(f'READ ( VARIABLE ) -> sentencia')
+    print(f'read ( VARIABLE ) -> read')
 
 
 def p_init(p):
     '''init : INIT A_LLAVE declaracion C_LLAVE
     '''
-    print(f'INIT {{ {p.slice[3].type} }} -> init')
+    print(f'init {{ declaracion }} -> init')
 
 
 def p_declaracion(p):
     '''declaracion : declaracion linea_declaracion
                     | linea_declaracion
     '''
-    print(f'{p.slice[1].type} -> declaracion')
+    if len(p) == 3:
+        print(f'declaracion linea_declaracion -> declaracion')
+    else:
+        print(f'linea_declaracion -> declaracion')
     
 
 def p_linea_declaracion(p):
@@ -100,14 +103,17 @@ def p_asignacion(p):
 def p_while(p):
     '''while : WHILE A_PARENTESIS condicion C_PARENTESIS A_LLAVE programa C_LLAVE
     '''
-    print(f'WHILE ( condicion ) {{ programa }} -> while')
+    print(f'while ( condicion ) {{ programa }} -> while')
     
     
 def p_if_else(p):
     '''if_else : IF A_PARENTESIS condicion C_PARENTESIS A_LLAVE programa C_LLAVE
                 | IF A_PARENTESIS condicion C_PARENTESIS A_LLAVE programa C_LLAVE ELSE A_LLAVE programa C_LLAVE
     '''
-    print(f'IF ( condicion ) {{ programa }} ELSE {{ programa }} -> if_else')
+    if len(p) == 8:
+        print(f'if ( condicion ) {{ programa }} -> if_else')
+    else:
+        print(f'if ( condicion ) {{ programa }} else {{ programa }} -> if_else')
 
 
 def p_condicion(p):
@@ -116,8 +122,12 @@ def p_condicion(p):
                     | NOT comparacion
                     | comparacion
     '''
-    print(f'{p.slice[1].type} -> condicion')
-    
+    if len(p) == 4: 
+        print(f'comparacion {p.slice[2].type} comparacion -> condicion')
+    elif len(p) == 3:
+        print(f'NOT comparacion -> condicion')  
+    else:
+        print(f'comparacion -> condicion')
 
 def p_comparacion(p):
     'comparacion : expresion COMPARADOR expresion'
@@ -127,20 +137,23 @@ def p_comparacion(p):
 def p_equal_expressions(p):
     '''equal_expressions : EQUAL_EXPRESSIONS A_PARENTESIS list_expressions C_PARENTESIS
     '''
-    print(f'expresion EQUAL_EXPRESSIONS expresion -> equal_expressions')
+    print(f'equalExpressions ( list_expressions ) -> equal_expressions')
     
 
 def p_list_expressions(p):
     '''list_expressions : expresion SEPARADOR_VARIABLES list_expressions
                         | expresion
     '''
-    print(f'{p.slice[1].type} -> list_expressions')
-    
+    if len(p) == 4:
+        print(f'expresion , list_expressions -> list_expressions')
+    else:
+        print(f'expresion -> list_expressions')
+
 
 def p_conv_date(p):
     '''conv_date : CONV_DATE A_PARENTESIS DATE C_PARENTESIS
     '''
-    print(f'CONV_DATE ( DATE ) -> conv_date')
+    print(f'convDate ( DATE ) -> conv_date')
 
 
 def p_expresion_menos(p):
@@ -192,7 +205,10 @@ def p_lista_variables(p):
     '''lista_variables : VARIABLE SEPARADOR_VARIABLES lista_variables
                        | VARIABLE
     '''
-    print(f'{p.slice[1].type} -> lista_variables')
+    if len(p) == 4:
+        print(f'VARIABLE , lista_variables -> lista_variables')
+    else:
+        print(f'VARIABLE -> lista_variables')
     
 
 def p_tipo_dato(p):
