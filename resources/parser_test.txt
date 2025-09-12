@@ -1,1 +1,42 @@
-c:=d*(e-21)/4
+#+ este es un comentario simple +#
+
+#+ este es un comentario
+ multilinea +#
+
+write("hola mundo")
+read(var1)
+
+var1:=21
+
+init {
+    a1, b1 : Float
+    variable1 : Int
+    p1, p2, p3 : String
+}
+
+while (a>b) {
+    var1:=21
+    if (a>c) {
+        var1:=23
+    }
+}
+
+if (not a>b) {
+    var1:=21
+    if (a>c) {
+        var1:=23
+    }
+}
+
+if (a>b and b>c) {
+    var1:=21
+} else {
+    var1:=22
+    if (a>c) {
+        var1:=23
+    }
+}
+
+equalExpressions(1+2,1*5,55,a)
+
+convDate(20-09-2023)
