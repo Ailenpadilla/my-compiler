@@ -1,0 +1,14 @@
+Nombre              Tipo de Dato   Valor                         
+-----------------------------------------------------------------
+c                                                                
+d                                                                
+e                                                                
+_21                 Int            21                            
+_4                  Int            4                             
+_0.3                Float          0.3                           
+_1.0                Float          1.0                           
+_0.3                Float          0.3                           
+_"hola mundo"       String         "hola mundo"                  
+_"hola 2025"        String         "hola 2025"                   
+_10-11-2024         Date           10-11-2024                    
+_30-01-2000         Date           30-01-2000                    
