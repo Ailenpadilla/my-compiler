@@ -85,7 +85,8 @@ def p_start(p):
 
 
 def p_programa(p):
-    '''programa : programa sentencia
+    '''programa : init programa sentencia
+                | programa sentencia
                 | sentencia
     '''
     if len(p) == 3:
@@ -104,7 +105,6 @@ def p_sentencia(p):
     '''sentencia : asignacion
                 | while
                 | if_else
-                | init
                 | write
                 | read
                 | equal_expressions

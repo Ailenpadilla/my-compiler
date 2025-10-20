@@ -3,6 +3,13 @@
 #+ este es un comentario
  multilinea +#
 
+#+ Declaracion de variables +#
+
+init {
+    a1, b1 : Float
+    variable1 : Int
+    p1, p2, p3 : String
+}
 
 #+ Entradas y salidas +#
 
@@ -17,8 +24,8 @@ a := 99.
 a := .9999
 a := 99
 
-c := d*(e+21)/4
-c := d*(e-21)/4
+c := d*(e + 21)/4
+c := d*(e - 21)/4
 
 x := 27 - c
 x := r + 500

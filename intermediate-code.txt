@@ -1,10 +1,14 @@
 Program
-  WRITE
-    write
-    "hola mundo"
-  READ
-    read
-    var1
+  Init
+    Declaration: Float
+      Var: a1
+      Var: b1
+    Declaration: Int
+      Var: variable1
+    Declaration: String
+      Var: p1
+      Var: p2
+      Var: p3
   :=
     a
     99999.99

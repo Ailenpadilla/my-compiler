@@ -75,14 +75,22 @@ def t_DATE(t):
     return t
 
 def t_N_ENTERO(t):
-    r'\d+'
+    r'-?\d+'
+    # Allow optional leading '-' for negative integers. The '-' token is still
+    # recognized separately when not followed by digits (e.g. as operator).
     t.value = int(t.value)
-    if not (0 <= t.value <= 32767):
-        raise Exception(f"Entero fuera de rango (16 bits) '{t.value}' en la linea: {t.lexer.lineno}")
+    if not (-32768 <= t.value <= 32767):
+        raise Exception(f"Entero fuera de rango (16 bits signed) '{t.value}' en la linea: {t.lexer.lineno}")
     return t
 
 def t_CADENA(t):
-    r'\"[^"\n]{0,50}\"'
+    r'\"([^"\n]*)\"'
+    # t.value includes the surrounding quotes, remove them for storage
+    raw = t.value[1:-1]
+    max_len = 50
+    if len(raw) > max_len:
+        raise Exception(f"Cadena demasiado larga (max {max_len}) '{raw}' en la linea: {t.lexer.lineno}")
+    t.value = raw
     return t
 
 
