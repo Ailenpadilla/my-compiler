@@ -17,9 +17,6 @@ a := 99.
 a := .9999
 a := 99
 
-b := "@sdADaSjfla%dfg"
-b := "asldk  fh sjf"
-
 c := d*(e+21)/4
 c := d*(e-21)/4
 
@@ -28,31 +25,32 @@ x := r + 500
 x := 34 * 3
 x := z / f
 
-
-#+ Declaracion de variables +#
-
-init {
-    a1, b1 : Float
-    variable1 : Int
-    p1, p2, p3 : String
-}
-
 #+ While +#
 
 while (a>b) {
     b:=b+1
 }
 
+while (a>b) {
+    b:=b+1
+    a:=1
+    a:=2
+}
+
 #+ If y condiciones +#
 
 if (a>b) {
     a:=1
+    a:=2
+} else {
+    a:=b
 }
 
 if (a>b and b>c) {
     a:=1
 } else {
     a:=2
+    a:=3
     if (a>c) {
         a:=3
     }
@@ -66,8 +64,3 @@ if (a==b or c<>d) {
     a:=d
 }
 
-#+ Funciones especiales +#
-
-equalExpressions(1+2,1*5,55,a)
-
-convDate(20-09-2023)
