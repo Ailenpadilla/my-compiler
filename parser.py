@@ -78,15 +78,23 @@ precedence = (
 
 
 def p_start(p):
-    '''start : programa'''
+    '''start : init programa
+            | programa 
+    '''
     # root node for entire program
-    p[0] = ASTNode('Program', children=p[1] if isinstance(p[1], list) else [p[1]])
+    # If init is present (start : init programa), combine the Init node
+    # with the programa statements. Otherwise, build Program from programa.
+    if len(p) == 3:
+        # p[1] is Init (ASTNode), p[2] is programa (list or single node)
+        prog_children = p[2] if isinstance(p[2], list) else [p[2]]
+        p[0] = ASTNode('Program', children=[p[1]] + prog_children)
+    else:
+        p[0] = ASTNode('Program', children=p[1] if isinstance(p[1], list) else [p[1]])
     print('FIN')
 
 
 def p_programa(p):
-    '''programa : init programa sentencia
-                | programa sentencia
+    '''programa : programa sentencia
                 | sentencia
     '''
     if len(p) == 3:

@@ -1,10 +1,16 @@
 Program
   Init
-    [<parser.ASTNode object at 0x000002A5A846B690>, <parser.ASTNode object at 0x000002A5A846B8D0>]
+    [<parser.ASTNode object at 0x0000017A175DBA50>, <parser.ASTNode object at 0x0000017A175DB7D0>]
     Declaration
       Type: Int
       Var: variable1
-    [<parser.ASTNode object at 0x000002A5A846BCD0>, <parser.ASTNode object at 0x000002A5A846BD90>, <parser.ASTNode object at 0x000002A5A846BE50>]
+    [<parser.ASTNode object at 0x0000017A175DBB90>, <parser.ASTNode object at 0x0000017A175DBF50>, <parser.ASTNode object at 0x0000017A175D0050>]
+  WRITE
+    write
+    hola mundo
+  READ
+    read
+    var1
   :=
     a
     99999.99
