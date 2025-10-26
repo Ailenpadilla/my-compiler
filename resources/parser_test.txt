@@ -71,3 +71,6 @@ if (a==b or c<>d) {
     a:=d
 }
 
+#+ Funciones especiales +#
+
+a:=convDate(20-09-2023)

@@ -116,7 +116,6 @@ def p_sentencia(p):
                 | write
                 | read
                 | equal_expressions
-                | conv_date
     '''
     print(f'{p.slice[1].type} -> sentencia')
     p[0] = p[1]
@@ -191,6 +190,7 @@ def p_linea_declaracion(p):
 
 def p_asignacion(p):
     '''asignacion : VARIABLE ASIGNACION expresion
+                | VARIABLE ASIGNACION conv_date
     '''
     # Assignment: VARIABLE := expresion
     print(f'VARIABLE ASIGNACION {p.slice[3].type} -> asignacion')
@@ -407,6 +407,7 @@ def p_tipo_dato(p):
     '''tipo_dato : FLOAT
                 | INT
                 | STRING
+                | DATE_CONVERTED
     '''
     print(f'{p.slice[1].type} -> tipo_dato')
     # return a simple string representing type

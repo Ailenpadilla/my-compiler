@@ -1,10 +1,10 @@
 Program
   Init
-    [<parser.ASTNode object at 0x0000017A175DBA50>, <parser.ASTNode object at 0x0000017A175DB7D0>]
+    [<parser.ASTNode object at 0x0000027F498CBB50>, <parser.ASTNode object at 0x0000027F498CB910>]
     Declaration
       Type: Int
       Var: variable1
-    [<parser.ASTNode object at 0x0000017A175DBB90>, <parser.ASTNode object at 0x0000017A175DBF50>, <parser.ASTNode object at 0x0000017A175D0050>]
+    [<parser.ASTNode object at 0x0000027F498CBC90>, <parser.ASTNode object at 0x0000027F498CC090>, <parser.ASTNode object at 0x0000027F498CC150>]
   WRITE
     write
     hola mundo
@@ -145,3 +145,6 @@ Program
     :=
       a
       d
+  :=
+    a
+    ConvDate: 20-09-2023

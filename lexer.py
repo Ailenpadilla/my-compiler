@@ -15,6 +15,7 @@ reserved = {
     'Float': 'FLOAT',
     'Int': 'INT',
     'String': 'STRING',
+    'DateConverted': 'DATE_CONVERTED',
     'equalExpressions': 'EQUAL_EXPRESSIONS',
     'convDate': 'CONV_DATE',
 }
@@ -130,12 +131,13 @@ def ejecutar_lexer():
         if token.type == 'VARIABLE':
             tabla_simbolos.append({'nombre': token.value, 'tipo': '', 'valor': ''})
         # Guardar constantes (nombre, tipo, valor)
-        elif token.type in ('N_ENTERO', 'N_FLOAT', 'CADENA', 'DATE'):
+        elif token.type in ('N_ENTERO', 'N_FLOAT', 'CADENA', 'DATE', 'DATE_CONVERTED'):
             tipo = {
                 'N_ENTERO': 'Int',
                 'N_FLOAT': 'Float',
                 'CADENA': 'String',
-                'DATE': 'Date'
+                'DATE': 'Date',
+                'DATE_CONVERTED': 'DateConverted'
             }[token.type]
             nombre_constante = f"_{token.value}"
             tabla_simbolos.append({'nombre': nombre_constante, 'tipo': tipo, 'valor': token.value})
