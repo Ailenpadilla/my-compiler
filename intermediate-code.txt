@@ -1,14 +1,10 @@
 Program
   Init
-    Declaration: Float
-      Var: a1
-      Var: b1
-    Declaration: Int
+    [<parser.ASTNode object at 0x000002A5A846B690>, <parser.ASTNode object at 0x000002A5A846B8D0>]
+    Declaration
+      Type: Int
       Var: variable1
-    Declaration: String
-      Var: p1
-      Var: p2
-      Var: p3
+    [<parser.ASTNode object at 0x000002A5A846BCD0>, <parser.ASTNode object at 0x000002A5A846BD90>, <parser.ASTNode object at 0x000002A5A846BE50>]
   :=
     a
     99999.99

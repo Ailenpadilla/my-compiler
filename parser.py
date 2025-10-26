@@ -169,8 +169,15 @@ def p_linea_declaracion(p):
     # add to symbol table
     for n in names:
         add_symbol(n, tipo, '')
-    node = ASTNode('Declaration', value=tipo, children=[ASTNode('Var', value=n) for n in names])
-    p[0] = node
+    # Create one Declaration node per variable so the tree has a clear
+    # left/right structure: left = Type, right = Var (similar to WRITE/READ)
+    decl_nodes = [ASTNode('Declaration', children=[ASTNode('Type', value=tipo), ASTNode('Var', value=n)]) for n in names]
+    # If only one variable was declared on the line, return a single node,
+    # otherwise return the list so higher-level rules can flatten them.
+    if len(decl_nodes) == 1:
+        p[0] = decl_nodes[0]
+    else:
+        p[0] = decl_nodes
     print(f'lista_variables ASIGNACION_TIPO tipo_dato -> linea_declaracion')
 
 
@@ -495,19 +502,30 @@ def ejecutar_parser():
                     lines.append(f'  {parent_id} -> {leaf_id};')
 
             def attach_children_binary(parent_id, children):
+                # Flatten one level of nested lists so we don't produce Python list
+                # string representations in the DOT file (these came from
+                # production rules returning lists of nodes).
+                flat = []
+                for c in children:
+                    if isinstance(c, list):
+                        for cc in c:
+                            flat.append(cc)
+                    else:
+                        flat.append(c)
+
                 # If node is a leaf (no children), do not add dummy nodes.
-                if not children:
+                if not flat:
                     return
 
                 # If exactly one child, attach it and return (no dummy right child)
-                if len(children) == 1:
-                    emit_child_edge(parent_id, children[0])
+                if len(flat) == 1:
+                    emit_child_edge(parent_id, flat[0])
                     return
 
                 # If exactly two children, attach both directly (no connector)
-                if len(children) == 2:
-                    emit_child_edge(parent_id, children[0])
-                    emit_child_edge(parent_id, children[1])
+                if len(flat) == 2:
+                    emit_child_edge(parent_id, flat[0])
+                    emit_child_edge(parent_id, flat[1])
                     return
 
                 # Helper to build a connector group for 2+ elements
@@ -528,11 +546,11 @@ def ejecutar_parser():
                     return conn
 
                 # Left child for parent: attach first child
-                emit_child_edge(parent_id, children[0])
+                emit_child_edge(parent_id, flat[0])
 
                 # Right child for parent: if there's exactly one remaining child, attach it directly,
                 # otherwise build a connector group (only if there are 2+ remaining items)
-                remaining = children[1:]
+                remaining = flat[1:]
                 if len(remaining) == 1:
                     emit_child_edge(parent_id, remaining[0])
                 else:
