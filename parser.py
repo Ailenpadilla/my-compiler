@@ -6,8 +6,6 @@ import ply.yacc as yacc  # analizador sintactico
 from pathlib import Path
 import shutil
 import subprocess
-from graphviz import Source
-
 
 # --- AST node and symbol table helpers ---
 class ASTNode:
@@ -610,13 +608,6 @@ def ejecutar_parser():
         dot_text = ast_to_dot(ast)
         dot_path.write_text(dot_text, encoding='utf-8')
         print(f'Wrote AST DOT to {dot_path.resolve()}')
-        
-        
-        # Load your .dot file
-        src = Source.from_file("intermediate-code.dot")
-
-        # Render as PNG
-        src.render("mygraph", format="png", cleanup=True)
 
         # If dot (Graphviz) is available, try to create a PNG
         if shutil.which('dot'):
