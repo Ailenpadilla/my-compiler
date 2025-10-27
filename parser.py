@@ -321,8 +321,44 @@ def p_conv_date(p):
     '''conv_date : CONV_DATE A_PARENTESIS DATE C_PARENTESIS
     '''
     print(f'convDate ( DATE ) -> conv_date')
-    node = ASTNode('ConvDate', value=p[3])
-    p[0] = node
+    # Build an arithmetic AST equivalent to: (anio * 10000) + (mes * 100) + dia
+    # This follows the project's convention of representing expressions as
+    # ASTNodes with operators '+', '*', etc., so the code generator can lower
+    # the arithmetic like any other expression.
+    raw = p[3]
+    try:
+        dia, mes, anio = map(int, raw.split('-'))
+        # Basic validation (lexer already enforces general shape and ranges)
+        mdays = [0,31,29,31,30,31,30,31,31,30,31,30,31]
+        if not (1 <= mes <= 12 and 1 <= dia <= mdays[mes]):
+            raise ValueError(f"Fecha inválida '{raw}'")
+        if mes == 2 and dia == 29:
+            is_leap = (anio % 4 == 0 and (anio % 100 != 0 or anio % 400 == 0))
+            if not is_leap:
+                raise ValueError(f"Fecha inválida (no es año bisiesto) '{raw}'")
+
+        # Create numeric AST nodes for year, month, day and the constants
+        node_year = ASTNode(str(anio))
+        node_month = ASTNode(str(mes))
+        node_day = ASTNode(str(dia))
+        node_10000 = ASTNode(str(10000))
+        node_100 = ASTNode(str(100))
+
+        # anio * 10000
+        mul_year = ASTNode('*', children=[node_year, node_10000])
+        # mes * 100
+        mul_month = ASTNode('*', children=[node_month, node_100])
+        # (mes * 100) + dia
+        add_month_day = ASTNode('+', children=[mul_month, node_day])
+        # (anio * 10000) + ((mes * 100) + dia)
+        total = ASTNode('+', children=[mul_year, add_month_day])
+        p[0] = total
+    except Exception as e:
+        # On failure, fall back to a ConvDate node so later stages can
+        # implement runtime conversion or raise an error.
+        print('Warning: convDate -> building arithmetic AST failed:', e)
+        node = ASTNode('ConvDate', value=raw)
+        p[0] = node
 
 
 def p_expresion_menos(p):
@@ -435,25 +471,6 @@ def ejecutar_parser():
     global symbol_table
     symbol_table = []
     ast = parser.parse(code)
-
-    # write intermediate code as AST tree to intermediate-code.txt
-    out_path = Path('./intermediate-code.txt')
-    if isinstance(ast, ASTNode):
-        out_text = ast.to_string()
-    else:
-        # sometimes parser returns list
-        if isinstance(ast, list):
-            lines = []
-            for n in ast:
-                if isinstance(n, ASTNode):
-                    lines.extend(n.to_lines())
-                else:
-                    lines.append(str(n))
-            out_text = '\n'.join(lines)
-        else:
-            out_text = str(ast)
-
-    out_path.write_text(out_text, encoding='utf-8')
 
     # write symbol table to resources/tabla_simbolos.txt
     # output_path = Path('./resources/tabla_simbolos.txt')
