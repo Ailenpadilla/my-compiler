@@ -48,6 +48,15 @@ def collect_var_names(lista):
         names.append(lista)
     return names
 
+# Simple temp name generator used to store intermediate expression results
+_temp_counter = {'i': 0}
+def new_temp():
+    _temp_counter['i'] += 1
+    name = f"_t{_temp_counter['i']}"
+    # register temp in symbol table (no specific type)
+    add_symbol(name, '')
+    return name
+
 diccionarioComparadores = {
     ">=":   "BLT",
     ">":   "BLE",
@@ -295,7 +304,53 @@ def p_equal_expressions(p):
     '''equal_expressions : EQUAL_EXPRESSIONS A_PARENTESIS list_expressions C_PARENTESIS
     '''
     print(f'equalExpressions ( list_expressions ) -> equal_expressions')
-    node = ASTNode('EqualExpressions', children=p[3] if isinstance(p[3], list) else [p[3]])
+    exprs = p[3] if isinstance(p[3], list) else [p[3]]
+
+    # If there's fewer than 2 expressions, result is always false (no equals pairs)
+    if len(exprs) < 2:
+        p[0] = ASTNode(str(0))
+        return
+
+    # Step 1: save each expression into an auxiliary temp variable to avoid
+    # re-evaluating complex expressions. We'll emit assignments like:
+    #   _t1 := <expr1>
+    #   _t2 := <expr2>
+    # ...
+    temp_names = []
+    assign_nodes = []
+    for e in exprs:
+        tname = new_temp()
+        temp_names.append(tname)
+        assign = ASTNode(':=', children=[tname, e])
+        assign_nodes.append(assign)
+
+    # Step 2: build equality comparisons for every pair (i < j): (_ti == _tj)
+    comparisons = []
+    for i in range(len(temp_names)):
+        for j in range(i+1, len(temp_names)):
+            left = temp_names[i]
+            right = temp_names[j]
+            comp = ASTNode('==', children=[left, right])
+            comparisons.append(comp)
+
+    # Step 3: fold all comparisons into a single boolean using OR: c1 OR c2 OR c3 ...
+    if not comparisons:
+        # should not happen given len(exprs) >= 2, but just in case
+        result_expr = ASTNode(str(0))
+    else:
+        result_expr = comparisons[0]
+        for c in comparisons[1:]:
+            result_expr = ASTNode('or', children=[result_expr, c])
+
+    # Return a node that contains the assignments followed by the resulting boolean
+    # Consumers can treat this as a block of statements producing the boolean value.
+    children = []
+    # flatten assign_nodes into children
+    for a in assign_nodes:
+        children.append(a)
+    children.append(result_expr)
+
+    node = ASTNode('EqualExpressions', children=children)
     p[0] = node
     
 

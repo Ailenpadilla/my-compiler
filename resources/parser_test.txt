@@ -73,4 +73,5 @@ if (a==b or c<>d) {
 
 #+ Funciones especiales +#
 
+equalExpressions(1+2,1*5,55,a)
 a:=convDate(20-09-2023)
