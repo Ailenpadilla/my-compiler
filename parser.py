@@ -1,11 +1,12 @@
 # parser.out -> se genera solo
 
-# Se importan los tokens generado previamente en el lexer
-from lexer import tokens
+# Se importan los tokens y el objeto lexer generado previamente en el lexer
+from lexer import tokens, lexer as lexing
 import ply.yacc as yacc  # analizador sintactico
 from pathlib import Path
 import shutil
 import subprocess
+from ast_exporter import ASTDotExporter
 
 # --- AST node and symbol table helpers ---
 class ASTNode:
@@ -28,16 +29,6 @@ class ASTNode:
     def to_string(self):
         return '\n'.join(self.to_lines())
 
-
-symbol_table = []
-
-def add_symbol(name, tipo='', valor=''):
-    # avoid duplicates for declared variables
-    for e in symbol_table:
-        if e['nombre'] == name and (tipo == '' or e.get('tipo') == tipo):
-            return
-    symbol_table.append({'nombre': name, 'tipo': tipo, 'valor': valor})
-
 def collect_var_names(lista):
     # lista is either [name] or [name, ...]
     names = []
@@ -53,8 +44,6 @@ _temp_counter = {'i': 0}
 def new_temp():
     _temp_counter['i'] += 1
     name = f"_t{_temp_counter['i']}"
-    # register temp in symbol table (no specific type)
-    add_symbol(name, '')
     return name
 
 diccionarioComparadores = {
@@ -140,7 +129,6 @@ def p_read(p):
     '''read : READ A_PARENTESIS VARIABLE C_PARENTESIS
     '''
     print(f'read ( VARIABLE ) -> read')
-    add_symbol(p[3], '')
     node = ASTNode('READ', children=['read',p[3]])
     p[0] = node
 
@@ -180,9 +168,6 @@ def p_linea_declaracion(p):
         names = varlist
     else:
         names = [varlist]
-    # add to symbol table
-    for n in names:
-        add_symbol(n, tipo, '')
     # Create one Declaration node per variable so the tree has a clear
     # left/right structure: left = Type, right = Var (similar to WRITE/READ)
     decl_nodes = [ASTNode('Declaration', children=[ASTNode('Type', value=tipo), ASTNode('Var', value=n)]) for n in names]
@@ -201,7 +186,6 @@ def p_asignacion(p):
     '''
     # Assignment: VARIABLE := expresion
     print(f'VARIABLE ASIGNACION {p.slice[3].type} -> asignacion')
-    add_symbol(p[1], '')
     node = ASTNode(':=', children=[p[1],p[3]])
     p[0] = node
 
@@ -469,7 +453,6 @@ def p_elemento(p):
     print(f'{p.slice[1].type} -> elemento') 
     tok = p.slice[1].type
     if tok == 'VARIABLE':
-        add_symbol(p[1], '')
         node = ASTNode(p[1])
     else:
         node = ASTNode(str(p[1]))
@@ -513,154 +496,27 @@ def p_error(p):
     raise Exception(f"Error en la linea {p.lineno or ''} at {p.value or ''}")
 
 
-def ejecutar_parser():
+def ejecutar_parser(code):
     # Build the parser
     parser = yacc.yacc()
-    # input file preference: ./prueba.txt, then resources/parser_test.txt
-    possible = [Path('./prueba.txt'), Path('./resources/parser_test.txt')]
-    path_parser = next((p for p in possible if p.exists()), possible[-1])
-    code = path_parser.read_text()
-    # reset symbol table
-    global symbol_table
-    symbol_table = []
-    ast = parser.parse(code)
 
-    # write symbol table to resources/tabla_simbolos.txt
-    # output_path = Path('./resources/tabla_simbolos.txt')
-    # with output_path.open('w', encoding='utf-8') as f:
-    #     f.write(f"{'Nombre':<20}{'Tipo de Dato':<15}{'Valor':<30}\n")
-    #     f.write('-' * 65 + '\n')
-    #     for entry in symbol_table:
-    #         f.write(f"{entry['nombre']:<20}{entry['tipo']:<15}{str(entry['valor']):<30}\n")
+    # Ensure lexer line numbers reset and parse using the lexer object so
+    # tokens come from the lexical analyzer implementation in lexer.py
+    try:
+        lexing.lineno = 1
+        print('Resetting lexer line number to 1')
+    except Exception:
+        print('Warning: lexer has no lineno attribute to reset')
+        pass
+    
+    # Ensure we provide the same lexer instance to the parser so tokens
+    # come from `lexer.py`. PLY will call lexing.input(code) internally.
+    ast = parser.parse(code, lexer=lexing)
 
-    # print(f'Wrote intermediate code to {out_path.resolve()}')
-    # print(f'Wrote symbol table to {output_path.resolve()}') 
-
-    # Also write DOT representation of the AST
+    # Write DOT representation of the AST
     try:
         dot_path = Path('./intermediate-code.dot')
-        def ast_to_dot(node):
-            # produce DOT lines with binaryized children via connector nodes
-            lines = ['digraph AST {', '  node [shape=box];']
-            counter = {'i': 0}
-            ids = {}
-
-            def nid(obj):
-                # unique id for ASTNode objects
-                if id(obj) in ids:
-                    return ids[id(obj)]
-                counter['i'] += 1
-                ids[id(obj)] = f'n{counter["i"]}'
-                return ids[id(obj)]
-
-            def new_id():
-                counter['i'] += 1
-                return f'n{counter["i"]}'
-
-            def escape(s):
-                return str(s).replace('"', '\\"')
-
-            def make_leaf(label):
-                lid = new_id()
-                lines.append(f'  {lid} [label="{escape(label)}"];')
-                return lid
-
-            def make_conn():
-                cid = new_id()
-                # connector node; visually distinct
-                lines.append(f'  {cid} [label="·", style="dashed"];')
-                return cid
-
-            def emit_child_edge(parent_id, child):
-                if isinstance(child, ASTNode):
-                    cid = nid(child)
-                    lines.append(f'  {parent_id} -> {cid};')
-                    walk(child)
-                else:
-                    leaf_id = make_leaf(child)
-                    lines.append(f'  {parent_id} -> {leaf_id};')
-
-            def attach_children_binary(parent_id, children):
-                # Flatten one level of nested lists so we don't produce Python list
-                # string representations in the DOT file (these came from
-                # production rules returning lists of nodes).
-                flat = []
-                for c in children:
-                    if isinstance(c, list):
-                        for cc in c:
-                            flat.append(cc)
-                    else:
-                        flat.append(c)
-
-                # If node is a leaf (no children), do not add dummy nodes.
-                if not flat:
-                    return
-
-                # If exactly one child, attach it and return (no dummy right child)
-                if len(flat) == 1:
-                    emit_child_edge(parent_id, flat[0])
-                    return
-
-                # If exactly two children, attach both directly (no connector)
-                if len(flat) == 2:
-                    emit_child_edge(parent_id, flat[0])
-                    emit_child_edge(parent_id, flat[1])
-                    return
-
-                # Helper to build a connector group for 2+ elements
-                def build_group_node(remaining):
-                    # remaining has length >= 2 here
-                    conn = make_conn()
-                    # left = first element
-                    emit_child_edge(conn, remaining[0])
-                    # right = if more than one left, either a nested group or direct child
-                    rest = remaining[1:]
-                    if len(rest) == 1:
-                        # attach single remaining element directly
-                        emit_child_edge(conn, rest[0])
-                    else:
-                        # build nested group for remaining elements
-                        next_group = build_group_node(rest)
-                        lines.append(f'  {conn} -> {next_group};')
-                    return conn
-
-                # Left child for parent: attach first child
-                emit_child_edge(parent_id, flat[0])
-
-                # Right child for parent: if there's exactly one remaining child, attach it directly,
-                # otherwise build a connector group (only if there are 2+ remaining items)
-                remaining = flat[1:]
-                if len(remaining) == 1:
-                    emit_child_edge(parent_id, remaining[0])
-                else:
-                    # remaining has length >= 2 -> need a group connector
-                    group = build_group_node(remaining)
-                    lines.append(f'  {parent_id} -> {group};')
-
-            def walk(n):
-                this_id = nid(n)
-                label = n.nodetype + (f"\\n{escape(n.value)}" if n.value is not None else '')
-                lines.append(f'  {this_id} [label="{label}"];')
-                # binaryize children here
-                attach_children_binary(this_id, n.children)
-
-            if isinstance(node, ASTNode):
-                walk(node)
-            elif isinstance(node, list):
-                # create artificial root
-                root_id = new_id()
-                lines.append(f'  {root_id} [label="Program"];')
-                # attach program elements as binary under root
-                attach_children_binary(root_id, node)
-            else:
-                # fallback single node
-                leaf_id = make_leaf(str(node))
-                lines.append(f'  {leaf_id} [label="{escape(str(node))}"];')
-
-            lines.append('}')
-            return '\n'.join(lines)
-
-        dot_text = ast_to_dot(ast)
+        dot_text = ASTDotExporter().to_dot(ast)
         dot_path.write_text(dot_text, encoding='utf-8')
         print(f'Wrote AST DOT to {dot_path.resolve()}')
 

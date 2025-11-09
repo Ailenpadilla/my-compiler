@@ -117,10 +117,8 @@ def t_error(t):
 lexer = lex.lex(reflags=re.DOTALL)
 
 
-def ejecutar_lexer():
-    path_lexter = Path('./resources/lexer_test.txt')
-    data = path_lexter.read_text()
-    lexer.input(data)
+def ejecutar_lexer(code):
+    lexer.input(code)
     tabla_simbolos = []
     while True:
         token = lexer.token()

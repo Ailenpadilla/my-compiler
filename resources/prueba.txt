@@ -1,0 +1,17 @@
+#+ este es un comentario simple +#
+
+#+ este es un comentario
+ multilinea +#
+
+#+ Declaracion de variables +#
+
+init {
+    a1, b1 : Float
+    variable1 : Int
+    p1, p2, p3 : String
+}
+
+#+ Entradas y salidas +#
+
+write("hola mundo")
+read(var1)
