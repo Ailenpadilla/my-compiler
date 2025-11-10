@@ -78,7 +78,6 @@ def p_sentencia(p):
                 | if_else
                 | write
                 | read
-                | equal_expressions
     '''
     print(f'{p.slice[1].type} -> sentencia')
     p[0] = p[1]
@@ -162,6 +161,7 @@ def p_linea_declaracion(p):
 def p_asignacion(p):
     '''asignacion : VARIABLE ASIGNACION expresion
                 | VARIABLE ASIGNACION conv_date
+                | VARIABLE ASIGNACION equal_expressions
     '''
     # Assignment: VARIABLE := expresion
     print(f'VARIABLE ASIGNACION {p.slice[3].type} -> asignacion')
@@ -269,8 +269,33 @@ def p_condicion(p):
                     | comparacion OR comparacion
                     | NOT comparacion
                     | comparacion
+                    | VARIABLE
+                    | NOT VARIABLE
+                    | VARIABLE AND VARIABLE
+                    | VARIABLE OR VARIABLE
     '''
     if len(p) == 4:
+        # If both operands are variables, ensure they are boolean variables and
+        # normalize each to a comparator: var == true
+        if p.slice[1].type == 'VARIABLE' and p.slice[3].type == 'VARIABLE':
+            try:
+                lineno = p.lineno(1)
+            except Exception:
+                lineno = 0
+            t1 = SEM.ensure_declared(p[1], lineno)
+            t2 = SEM.ensure_declared(p[3], lineno)
+            if t1 != 'Bool' or t2 != 'Bool':
+                raise Exception(f"Error semántico (línea {lineno}): operadores lógicos requieren variables booleanas")
+            v1 = ASTNode(p[1], dtype='Bool')
+            v2 = ASTNode(p[3], dtype='Bool')
+            # Create distinct literal leaves so each comparator has its own
+            lit_true_left = ASTNode('true', dtype='Bool')
+            lit_true_right = ASTNode('true', dtype='Bool')
+            left_cmp = ASTNode('==', children=[v1, lit_true_left], dtype='Bool')
+            right_cmp = ASTNode('==', children=[v2, lit_true_right], dtype='Bool')
+            node = ASTNode(p[2], children=[left_cmp, right_cmp], dtype='Bool')
+            p[0] = node
+            return
         print(f'comparacion {p.slice[2].type} comparacion -> condicion')
         t1 = getattr(p[1], 'dtype', None)
         t2 = getattr(p[3], 'dtype', None)
@@ -282,10 +307,22 @@ def p_condicion(p):
             raise Exception(f"Error semántico (línea {lineno}): operadores lógicos requieren operandos booleanos")
         node = ASTNode(p[2], children=[p[1], p[3]], dtype='Bool')
     elif len(p) == 3:
-        # Try to invert a simple comparison by swapping the comparator
-        # using diccionarioComparadoresNot. If p[2] is not a comparacion
-        # node with two children or its nodetype isn't in the dictionary,
-        # fall back to producing a CondNot node.
+        # NOT of comparison or NOT of boolean variable
+        if p.slice[2].type == 'VARIABLE':
+            try:
+                lineno = p.lineno(2)
+            except Exception:
+                lineno = 0
+            vname = p[2]
+            vtype = SEM.ensure_declared(vname, lineno)
+            if vtype != 'Bool':
+                raise Exception(f"Error semántico (línea {lineno}): 'not' requiere una variable booleana")
+            # Normalize to comparison: v == false
+            left = ASTNode(vname, dtype='Bool')
+            right = ASTNode('false', dtype='Bool')
+            node = ASTNode('==', children=[left, right], dtype='Bool')
+            p[0] = node
+            return
         print(f'NOT comparacion -> condicion')
         comp = p[2]
         if isinstance(comp, ASTNode) and comp.nodetype in diccionarioComparadoresNot and len(comp.children) == 2:
@@ -300,12 +337,35 @@ def p_condicion(p):
                 raise Exception(f"Error semántico (línea {lineno}): 'not' requiere una expresión booleana")
             node = ASTNode('CondNot', children=[p[2]], dtype='Bool')
     else:
-        print(f'comparacion -> condicion')
-        node = p[1]
+        # Single comparison result or a boolean variable
+        if p.slice[1].type == 'VARIABLE':
+            print(f'bool -> condicion')
+            try:
+                lineno = p.lineno(1)
+            except Exception:
+                lineno = 0
+            vname = p[1]
+            vtype = SEM.ensure_declared(vname, lineno)
+            if vtype != 'Bool':
+                raise Exception(f"Error semántico (línea {lineno}): la condición debe ser una variable booleana")
+            # Normalize to comparison: v == true
+            left = ASTNode(vname, dtype='Bool')
+            right = ASTNode('true', dtype='Bool')
+            node = ASTNode('==', children=[left, right], dtype='Bool')
+        else:
+            print(f'comparacion -> condicion')
+            node = p[1]
+            if getattr(node, 'dtype', None) != 'Bool':
+                try:
+                    lineno = getattr(p, 'lineno', lambda i: 0)(1)
+                except Exception:
+                    lineno = 0
+                raise Exception(f"Error semántico (línea {lineno}): la condición debe ser booleana")
     p[0] = node
 
 def p_comparacion(p):
-    'comparacion : expresion COMPARADOR expresion'
+    '''comparacion : expresion COMPARADOR expresion
+    '''
     print(f'expresion COMPARADOR expresion -> comparacion')
     left = p[1]
     right = p[3]
@@ -566,6 +626,7 @@ def p_tipo_dato(p):
                 | INT
                 | STRING
                 | DATE_CONVERTED
+                | BOOLEAN
     '''
     print(f'{p.slice[1].type} -> tipo_dato')
     # return a simple string representing type
@@ -575,8 +636,10 @@ def p_tipo_dato(p):
         p[0] = 'Int'
     elif p.slice[1].type == 'STRING':
         p[0] = 'String'
-    else:  # DATE_CONVERTED
+    elif p.slice[1].type == 'DATE_CONVERTED':
         p[0] = 'DateConverted'
+    else:  # BOOLEAN
+        p[0] = 'Bool'
 
 
 # Error rule for syntax errors

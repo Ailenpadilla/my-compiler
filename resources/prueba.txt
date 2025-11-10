@@ -10,15 +10,16 @@ init {
     b : DateConverted
     c : String
     d : Float
+    e, f, g : Bool
 }
 
-equalExpressions(1+2,1*5,55,a)
+e:=equalExpressions(1+2,1*5,55,a)
 b:=convDate(20-09-2023)
 
-a := 25
+if (e) {
+    write("equalExpressions is false")
+}
 
-if (a > d) {
-    write("a es mayor que b")
-} else {
-    write("a no es mayor que b")
+if (a>b) {
+    write("hola")
 }

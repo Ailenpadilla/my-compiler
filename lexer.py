@@ -18,6 +18,7 @@ reserved = {
     'DateConverted': 'DATE_CONVERTED',
     'equalExpressions': 'EQUAL_EXPRESSIONS',
     'convDate': 'CONV_DATE',
+    'Bool': 'BOOLEAN',
 }
 
 tokens = [
@@ -135,7 +136,8 @@ def ejecutar_lexer(code):
                 'N_FLOAT': 'Float',
                 'CADENA': 'String',
                 'DATE': 'Date',
-                'DATE_CONVERTED': 'DateConverted'
+                'DATE_CONVERTED': 'DateConverted',
+                'BOOLEAN': 'Bool'
             }[token.type]
             nombre_constante = f"_{token.value}"
             tabla_simbolos.append({'nombre': nombre_constante, 'tipo': tipo, 'valor': token.value})

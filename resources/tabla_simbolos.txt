@@ -5,6 +5,10 @@ b
 _DateConverted      DateConverted  DateConverted                 
 c                                                                
 d                                                                
+e                                                                
+f                                                                
+g                                                                
+e                                                                
 _1                  Int            1                             
 _2                  Int            2                             
 _1                  Int            1                             
@@ -13,9 +17,8 @@ _55                 Int            55
 a                                                                
 b                                                                
 _20-09-2023         Date           20-09-2023                    
+e                                                                
+_equalExpressions is falseString         equalExpressions is false     
 a                                                                
-_25                 Int            25                            
-a                                                                
-d                                                                
-_a es mayor que b   String         a es mayor que b              
-_a no es mayor que bString         a no es mayor que b           
+b                                                                
+_hola               String         hola                          
