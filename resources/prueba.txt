@@ -6,12 +6,17 @@
 #+ Declaracion de variables +#
 
 init {
-    a1, b1 : Float
-    variable1 : Int
-    p1, p2, p3 : String
+    a : Int
+    b : DateConverted
+    c : String
+    d : Float
 }
 
-#+ Entradas y salidas +#
+equalExpressions(1+2,1*5,55,a)
+b:=convDate(20-09-2023)
 
-write("hola mundo")
-read(var1)
+a := 25
+
+if (a > d) {
+    write("a es mayor que b")
+}

@@ -10,10 +10,11 @@ from ast_exporter import ASTDotExporter
 
 # --- AST node and symbol table helpers ---
 class ASTNode:
-    def __init__(self, nodetype, value=None, children=None):
+    def __init__(self, nodetype, value=None, children=None, dtype=None):
         self.nodetype = nodetype
         self.value = value
         self.children = children or []
+        self.dtype = dtype
 
     def to_lines(self, level=0):
         indent = '  ' * level
@@ -45,6 +46,61 @@ def new_temp():
     _temp_counter['i'] += 1
     name = f"_t{_temp_counter['i']}"
     return name
+
+# ----------------- Semantic context and helpers -----------------
+class SemanticContext:
+    def __init__(self):
+        self.symbols = {}
+        self.declared = set()
+
+    def load_from_table(self, path: Path):
+        if not path.exists():
+            return
+        lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+        for line in lines[2:]:
+            if not line.strip():
+                continue
+            name = line[0:20].strip()
+            tipo = line[20:35].strip()
+            valor = line[35:].strip()
+            self.symbols[name] = {'tipo': tipo, 'valor': valor}
+            if tipo:
+                self.declared.add(name)
+
+    def set_decl(self, name: str, dtype: str, lineno: int):
+        if name in self.declared:
+            raise Exception(f"Error semántico (línea {lineno}): variable '{name}' ya declarada")
+        entry = self.symbols.get(name, {'tipo': '', 'valor': ''})
+        entry['tipo'] = dtype
+        self.symbols[name] = entry
+        self.declared.add(name)
+
+    def ensure_declared(self, name: str, lineno: int):
+        entry = self.symbols.get(name)
+        if not entry or not entry.get('tipo'):
+            raise Exception(f"Error semántico (línea {lineno}): identificador no declarado '{name}'")
+        return entry['tipo']
+
+
+SEM = SemanticContext()
+
+
+def is_numeric(t):
+    return t in ('Int', 'Float', 'DateConverted')
+
+
+def combine_numeric(t1, t2, lineno: int, op: str):
+    if not (is_numeric(t1) and is_numeric(t2)):
+        raise Exception(f"Error semántico (línea {lineno}): operador '{op}' requiere operandos numéricos, recibió {t1} y {t2}")
+    if 'Float' in (t1, t2):
+        return 'Float'
+    return 'Int'
+
+
+def ensure_assign_compatible(lhs_t: str, rhs_t: str, lineno: int, lhs_name: str):
+    if lhs_t != rhs_t:
+        raise Exception(
+            f"Error semántico (línea {lineno}): incompatibilidad de tipos al asignar a '{lhs_name}': {lhs_t} := {rhs_t}")
 
 diccionarioComparadores = {
     ">=":   "BLT",
@@ -121,7 +177,7 @@ def p_write(p):
     '''write : WRITE A_PARENTESIS CADENA C_PARENTESIS
     '''
     print(f'write ( CADENA ) -> write')
-    node = ASTNode('WRITE', children=['write',p[3]])
+    node = ASTNode('WRITE', children=['write',p[3]], dtype=None)
     p[0] = node
     
     
@@ -129,7 +185,12 @@ def p_read(p):
     '''read : READ A_PARENTESIS VARIABLE C_PARENTESIS
     '''
     print(f'read ( VARIABLE ) -> read')
-    node = ASTNode('READ', children=['read',p[3]])
+    try:
+        lineno = p.lineno(3)
+    except Exception:
+        lineno = 0
+    SEM.ensure_declared(p[3], lineno)
+    node = ASTNode('READ', children=['read',p[3]], dtype=None)
     p[0] = node
 
 
@@ -170,6 +231,14 @@ def p_linea_declaracion(p):
         names = [varlist]
     # Create one Declaration node per variable so the tree has a clear
     # left/right structure: left = Type, right = Var (similar to WRITE/READ)
+    # Semantic: register declarations and check duplicates
+    try:
+        lineno = p.lineno(1)
+    except Exception:
+        lineno = 0
+    for n in names:
+        SEM.set_decl(n, tipo, lineno)
+
     decl_nodes = [ASTNode('Declaration', children=[ASTNode('Type', value=tipo), ASTNode('Var', value=n)]) for n in names]
     # If only one variable was declared on the line, return a single node,
     # otherwise return the list so higher-level rules can flatten them.
@@ -186,7 +255,19 @@ def p_asignacion(p):
     '''
     # Assignment: VARIABLE := expresion
     print(f'VARIABLE ASIGNACION {p.slice[3].type} -> asignacion')
-    node = ASTNode(':=', children=[p[1],p[3]])
+    # Semantic checks
+    try:
+        lineno = p.lineno(1)
+    except Exception:
+        lineno = 0
+    lhs_name = p[1]
+    lhs_t = SEM.ensure_declared(lhs_name, lineno)
+    rhs_node = p[3]
+    rhs_t = getattr(rhs_node, 'dtype', None)
+    if rhs_t is None:
+        rhs_t = 'Unknown'
+    ensure_assign_compatible(lhs_t, rhs_t, lineno, lhs_name)
+    node = ASTNode(':=', children=[p[1],p[3]], dtype=lhs_t)
     p[0] = node
 
 
@@ -200,6 +281,15 @@ def p_while(p):
             return block
         else:
             return [block]
+
+    # Validate condition type is boolean
+    cond = p[3]
+    if getattr(cond, 'dtype', None) != 'Bool':
+        try:
+            lineno = p.lineno(1)
+        except Exception:
+            lineno = 0
+        raise Exception(f"Error semántico (línea {lineno}): la condición de while debe ser booleana")
 
     body_children = wrap_block(p[6])
     if len(body_children) == 1:
@@ -228,12 +318,25 @@ def p_if_else(p):
     if len(p) == 8:
         print(f'if ( condicion ) {{ programa }} -> if_else')
         # flatten block statements into IF's children: [cond, stmt1, stmt2, ...]
+        # Semantic: condition must be boolean
+        if getattr(p[3], 'dtype', None) != 'Bool':
+            try:
+                lineno = p.lineno(1)
+            except Exception:
+                lineno = 0
+            raise Exception(f"Error semántico (línea {lineno}): la condición de if debe ser booleana")
         then_children = wrap_block(p[6])
         node = ASTNode('IF', children=[p[3]] + then_children)
     else:
         print(f'if ( condicion ) {{ programa }} else {{ programa }} -> if_else')
         # Build then and else subtrees. If they contain multiple statements,
         # keep them wrapped in a Block so we can attach them as left/right of Body.
+        if getattr(p[3], 'dtype', None) != 'Bool':
+            try:
+                lineno = p.lineno(1)
+            except Exception:
+                lineno = 0
+            raise Exception(f"Error semántico (línea {lineno}): la condición de if debe ser booleana")
         then_children = wrap_block(p[6])
         else_children = wrap_block(p[10])
 
@@ -259,7 +362,15 @@ def p_condicion(p):
     '''
     if len(p) == 4:
         print(f'comparacion {p.slice[2].type} comparacion -> condicion')
-        node = ASTNode(p[2], children=[p[1], p[3]])
+        t1 = getattr(p[1], 'dtype', None)
+        t2 = getattr(p[3], 'dtype', None)
+        if t1 != 'Bool' or t2 != 'Bool':
+            try:
+                lineno = p.lineno(2)
+            except Exception:
+                lineno = 0
+            raise Exception(f"Error semántico (línea {lineno}): operadores lógicos requieren operandos booleanos")
+        node = ASTNode(p[2], children=[p[1], p[3]], dtype='Bool')
     elif len(p) == 3:
         # Try to invert a simple comparison by swapping the comparator
         # using diccionarioComparadoresNot. If p[2] is not a comparacion
@@ -269,9 +380,15 @@ def p_condicion(p):
         comp = p[2]
         if isinstance(comp, ASTNode) and comp.nodetype in diccionarioComparadoresNot and len(comp.children) == 2:
             inverted = diccionarioComparadoresNot[comp.nodetype]
-            node = ASTNode(inverted, children=[comp.children[0], comp.children[1]])
+            node = ASTNode(inverted, children=[comp.children[0], comp.children[1]], dtype='Bool')
         else:
-            node = ASTNode('CondNot', children=[p[2]])
+            if getattr(p[2], 'dtype', None) != 'Bool':
+                try:
+                    lineno = p.lineno(1)
+                except Exception:
+                    lineno = 0
+                raise Exception(f"Error semántico (línea {lineno}): 'not' requiere una expresión booleana")
+            node = ASTNode('CondNot', children=[p[2]], dtype='Bool')
     else:
         print(f'comparacion -> condicion')
         node = p[1]
@@ -280,7 +397,22 @@ def p_condicion(p):
 def p_comparacion(p):
     'comparacion : expresion COMPARADOR expresion'
     print(f'expresion COMPARADOR expresion -> comparacion')
-    node = ASTNode(p[2], children=[p[1], p[3]])
+    left = p[1]
+    right = p[3]
+    op = p[2]
+    t1 = getattr(left, 'dtype', None)
+    t2 = getattr(right, 'dtype', None)
+    try:
+        lineno = p.lineno(2)
+    except Exception:
+        lineno = 0
+    if op in ('<', '<=', '>', '>='):
+        if not (is_numeric(t1) and is_numeric(t2)):
+            raise Exception(f"Error semántico (línea {lineno}): comparadores relacionales requieren operandos numéricos, recibió {t1} y {t2}")
+    else:
+        if not (t1 == t2 or (is_numeric(t1) and is_numeric(t2))):
+            raise Exception(f"Error semántico (línea {lineno}): comparación entre tipos incompatibles {t1} y {t2}")
+    node = ASTNode(op, children=[left, right], dtype='Bool')
     p[0] = node
 
 
@@ -289,6 +421,18 @@ def p_equal_expressions(p):
     '''
     print(f'equalExpressions ( list_expressions ) -> equal_expressions')
     exprs = p[3] if isinstance(p[3], list) else [p[3]]
+
+    # Semantic: require all expressions to be same type (or all numeric)
+    types = [getattr(e, 'dtype', None) for e in exprs]
+    try:
+        lineno = p.lineno(1)
+    except Exception:
+        lineno = 0
+    if types:
+        base = types[0]
+        for t in types[1:]:
+            if not (t == base or (is_numeric(t) and is_numeric(base))):
+                raise Exception(f"Error semántico (línea {lineno}): equalExpressions con tipos incompatibles {base} y {t}")
 
     # If there's fewer than 2 expressions, result is always false (no equals pairs)
     if len(exprs) < 2:
@@ -325,6 +469,7 @@ def p_equal_expressions(p):
         result_expr = comparisons[0]
         for c in comparisons[1:]:
             result_expr = ASTNode('or', children=[result_expr, c])
+        result_expr = ASTNode('IF', children=[result_expr])
 
     # Return a node that contains the assignments followed by the resulting boolean
     # Consumers can treat this as a block of statements producing the boolean value.
@@ -334,7 +479,7 @@ def p_equal_expressions(p):
         children.append(a)
     children.append(result_expr)
 
-    node = ASTNode('EqualExpressions', children=children)
+    node = ASTNode('EqualExpressions', children=children, dtype='Bool')
     p[0] = node
     
 
@@ -375,40 +520,50 @@ def p_conv_date(p):
                 raise ValueError(f"Fecha inválida (no es año bisiesto) '{raw}'")
 
         # Create numeric AST nodes for year, month, day and the constants
-        node_year = ASTNode(str(anio))
-        node_month = ASTNode(str(mes))
-        node_day = ASTNode(str(dia))
-        node_10000 = ASTNode(str(10000))
-        node_100 = ASTNode(str(100))
+        node_year = ASTNode(str(anio), dtype='Int')
+        node_month = ASTNode(str(mes), dtype='Int')
+        node_day = ASTNode(str(dia), dtype='Int')
+        node_10000 = ASTNode(str(10000), dtype='Int')
+        node_100 = ASTNode(str(100), dtype='Int')
 
         # anio * 10000
-        mul_year = ASTNode('*', children=[node_year, node_10000])
+        mul_year = ASTNode('*', children=[node_year, node_10000], dtype='Int')
         # mes * 100
-        mul_month = ASTNode('*', children=[node_month, node_100])
+        mul_month = ASTNode('*', children=[node_month, node_100], dtype='Int')
         # (mes * 100) + dia
-        add_month_day = ASTNode('+', children=[mul_month, node_day])
+        add_month_day = ASTNode('+', children=[mul_month, node_day], dtype='Int')
         # (anio * 10000) + ((mes * 100) + dia)
-        total = ASTNode('+', children=[mul_year, add_month_day])
+        total = ASTNode('+', children=[mul_year, add_month_day], dtype='DateConverted')
         p[0] = total
     except Exception as e:
         # On failure, fall back to a ConvDate node so later stages can
         # implement runtime conversion or raise an error.
         print('Warning: convDate -> building arithmetic AST failed:', e)
-        node = ASTNode('ConvDate', value=raw)
+        node = ASTNode('ConvDate', value=raw, dtype='DateConverted')
         p[0] = node
 
 
 def p_expresion_menos(p):
     'expresion : expresion MENOS termino'
     print('expresion - termino -> expresion')
-    node = ASTNode('-', children=[p[1], p[3]])
+    try:
+        lineno = p.lineno(2)
+    except Exception:
+        lineno = 0
+    t = combine_numeric(getattr(p[1], 'dtype', None), getattr(p[3], 'dtype', None), lineno, '-')
+    node = ASTNode('-', children=[p[1], p[3]], dtype=t)
     p[0] = node
     
     
 def p_expresion_mas(p):
     'expresion : expresion MAS termino'
     print('expresion + termino -> expresion')
-    node = ASTNode('+', children=[p[1], p[3]])
+    try:
+        lineno = p.lineno(2)
+    except Exception:
+        lineno = 0
+    t = combine_numeric(getattr(p[1], 'dtype', None), getattr(p[3], 'dtype', None), lineno, '+')
+    node = ASTNode('+', children=[p[1], p[3]], dtype=t)
     p[0] = node
 
 
@@ -421,14 +576,25 @@ def p_expresion_termino(p):
 def p_termino_multiplicacion(p):
     'termino : termino MULTIPLICACION elemento'
     print('termino * elemento -> termino')
-    node = ASTNode('*', children=[p[1], p[3]])
+    try:
+        lineno = p.lineno(2)
+    except Exception:
+        lineno = 0
+    t = combine_numeric(getattr(p[1], 'dtype', None), getattr(p[3], 'dtype', None), lineno, '*')
+    node = ASTNode('*', children=[p[1], p[3]], dtype=t)
     p[0] = node
 
 
 def p_termino_division(p):
     'termino : termino DIVISION elemento'
     print('termino / elemento -> termino')
-    node = ASTNode('/', children=[p[1], p[3]])
+    try:
+        lineno = p.lineno(2)
+    except Exception:
+        lineno = 0
+    t = combine_numeric(getattr(p[1], 'dtype', None), getattr(p[3], 'dtype', None), lineno, '/')
+    t = 'Float' if t in ('Int', 'Float') else t
+    node = ASTNode('/', children=[p[1], p[3]], dtype=t)
     p[0] = node
 
 
@@ -452,10 +618,20 @@ def p_elemento(p):
     '''
     print(f'{p.slice[1].type} -> elemento') 
     tok = p.slice[1].type
+    try:
+        lineno = p.lineno(1)
+    except Exception:
+        lineno = 0
     if tok == 'VARIABLE':
-        node = ASTNode(p[1])
-    else:
-        node = ASTNode(str(p[1]))
+        vname = p[1]
+        vtype = SEM.ensure_declared(vname, lineno)
+        node = ASTNode(vname, dtype=vtype)
+    elif tok == 'N_ENTERO':
+        node = ASTNode(str(p[1]), dtype='Int')
+    elif tok == 'N_FLOAT':
+        node = ASTNode(str(p[1]), dtype='Float')
+    elif tok == 'CADENA':
+        node = ASTNode(str(p[1]), dtype='String')
     p[0] = node
     
     
@@ -487,8 +663,10 @@ def p_tipo_dato(p):
         p[0] = 'Float'
     elif p.slice[1].type == 'INT':
         p[0] = 'Int'
-    else:
+    elif p.slice[1].type == 'STRING':
         p[0] = 'String'
+    else:  # DATE_CONVERTED
+        p[0] = 'DateConverted'
 
 
 # Error rule for syntax errors
@@ -509,6 +687,12 @@ def ejecutar_parser(code):
         print('Warning: lexer has no lineno attribute to reset')
         pass
     
+    # Load symbols from lexer-generated table before parsing (semantic checks)
+    try:
+        SEM.load_from_table(Path('./resources/tabla_simbolos.txt'))
+    except Exception as e:
+        print('Warning: no se pudo cargar tabla de símbolos:', e)
+
     # Ensure we provide the same lexer instance to the parser so tokens
     # come from `lexer.py`. PLY will call lexing.input(code) internally.
     ast = parser.parse(code, lexer=lexing)
