@@ -47,13 +47,10 @@ def p_start(p):
     '''start : init programa
             | programa 
     '''
-    # root node for entire program
-    # If init is present (start : init programa), combine the Init node
-    # with the programa statements. Otherwise, build Program from programa.
+    # root node for entire program; ignore init in the AST (semantic only)
     if len(p) == 3:
-        # p[1] is Init (ASTNode), p[2] is programa (list or single node)
         prog_children = p[2] if isinstance(p[2], list) else [p[2]]
-        p[0] = ASTNode('Program', children=[p[1]] + prog_children)
+        p[0] = ASTNode('Program', children=prog_children)
     else:
         p[0] = ASTNode('Program', children=p[1] if isinstance(p[1], list) else [p[1]])
     print('FIN')
@@ -111,9 +108,8 @@ def p_read(p):
 def p_init(p):
     '''init : INIT A_LLAVE declaracion C_LLAVE
     '''
-    # declaracion returns list of declaration nodes
-    node = ASTNode('Init', children=p[3] if isinstance(p[3], list) else [p[3]])
-    p[0] = node
+    # Process declarations semantically; do not build AST nodes for init
+    p[0] = None
     print(f'init {{ declaracion }} -> init')
 
 
