@@ -18,3 +18,4 @@ _25                 Int            25
 a                                                                
 d                                                                
 _a es mayor que b   String         a es mayor que b              
+_a no es mayor que bString         a no es mayor que b           

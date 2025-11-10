@@ -7,100 +7,14 @@ from pathlib import Path
 import shutil
 import subprocess
 from ast_exporter import ASTDotExporter
-
-# --- AST node and symbol table helpers ---
-class ASTNode:
-    def __init__(self, nodetype, value=None, children=None, dtype=None):
-        self.nodetype = nodetype
-        self.value = value
-        self.children = children or []
-        self.dtype = dtype
-
-    def to_lines(self, level=0):
-        indent = '  ' * level
-        val = f": {self.value}" if self.value is not None else ""
-        lines = [f"{indent}{self.nodetype}{val}"]
-        for c in self.children:
-            if isinstance(c, ASTNode):
-                lines.extend(c.to_lines(level + 1))
-            else:
-                lines.append('  ' * (level + 1) + str(c))
-        return lines
-
-    def to_string(self):
-        return '\n'.join(self.to_lines())
-
-def collect_var_names(lista):
-    # lista is either [name] or [name, ...]
-    names = []
-    if isinstance(lista, list):
-        for n in lista:
-            names.append(n)
-    else:
-        names.append(lista)
-    return names
-
-# Simple temp name generator used to store intermediate expression results
-_temp_counter = {'i': 0}
-def new_temp():
-    _temp_counter['i'] += 1
-    name = f"_t{_temp_counter['i']}"
-    return name
-
-# ----------------- Semantic context and helpers -----------------
-class SemanticContext:
-    def __init__(self):
-        self.symbols = {}
-        self.declared = set()
-
-    def load_from_table(self, path: Path):
-        if not path.exists():
-            return
-        lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
-        for line in lines[2:]:
-            if not line.strip():
-                continue
-            name = line[0:20].strip()
-            tipo = line[20:35].strip()
-            valor = line[35:].strip()
-            self.symbols[name] = {'tipo': tipo, 'valor': valor}
-            if tipo:
-                self.declared.add(name)
-
-    def set_decl(self, name: str, dtype: str, lineno: int):
-        if name in self.declared:
-            raise Exception(f"Error semántico (línea {lineno}): variable '{name}' ya declarada")
-        entry = self.symbols.get(name, {'tipo': '', 'valor': ''})
-        entry['tipo'] = dtype
-        self.symbols[name] = entry
-        self.declared.add(name)
-
-    def ensure_declared(self, name: str, lineno: int):
-        entry = self.symbols.get(name)
-        if not entry or not entry.get('tipo'):
-            raise Exception(f"Error semántico (línea {lineno}): identificador no declarado '{name}'")
-        return entry['tipo']
-
-
-SEM = SemanticContext()
-
-
-def is_numeric(t):
-    return t in ('Int', 'Float', 'DateConverted')
-
-
-def combine_numeric(t1, t2, lineno: int, op: str):
-    if not (is_numeric(t1) and is_numeric(t2)):
-        raise Exception(f"Error semántico (línea {lineno}): operador '{op}' requiere operandos numéricos, recibió {t1} y {t2}")
-    if 'Float' in (t1, t2):
-        return 'Float'
-    return 'Int'
-
-
-def ensure_assign_compatible(lhs_t: str, rhs_t: str, lineno: int, lhs_name: str):
-    if lhs_t != rhs_t:
-        raise Exception(
-            f"Error semántico (línea {lineno}): incompatibilidad de tipos al asignar a '{lhs_name}': {lhs_t} := {rhs_t}")
+from ast_node import ASTNode
+from semantic_context import SEM
+from helpers import (
+    new_temp,
+    is_numeric,
+    combine_numeric,
+    ensure_assign_compatible,
+)
 
 diccionarioComparadores = {
     ">=":   "BLT",

@@ -19,4 +19,6 @@ a := 25
 
 if (a > d) {
     write("a es mayor que b")
+} else {
+    write("a no es mayor que b")
 }
