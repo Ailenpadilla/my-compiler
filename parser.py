@@ -173,11 +173,56 @@ def p_asignacion(p):
     lhs_name = p[1]
     lhs_t = SEM.ensure_declared(lhs_name, lineno)
     rhs_node = p[3]
-    rhs_t = getattr(rhs_node, 'dtype', None)
-    if rhs_t is None:
-        rhs_t = 'Unknown'
-    ensure_assign_compatible(lhs_t, rhs_t, lineno, lhs_name)
-    node = ASTNode(':=', children=[p[1],p[3]], dtype=lhs_t)
+    # Special handling: expand equalExpressions into assignment + nested IF chain targeting the LHS
+    if isinstance(rhs_node, ASTNode) and rhs_node.nodetype == 'EqualExpressions':
+        if lhs_t != 'Bool':
+            raise Exception(f"Error semántico (línea {lineno}): equalExpressions solo puede asignarse a variables Boolean")
+
+        def build_equal_expr_chain(target_var, exprs):
+            temps = []
+            assigns_top = []
+            for i, e in enumerate(exprs):
+                tname = new_temp()
+                temps.append(tname)
+            # Assign first two expressions
+            assigns_top.append(ASTNode(':=', children=[temps[0], exprs[0]]))
+            assigns_top.append(ASTNode(':=', children=[temps[1], exprs[1]]))
+
+            # Default else branch assigns false to target
+            else_branch = ASTNode(':=', children=[target_var, ASTNode('false', dtype='Bool')])
+
+            # Build nested IFs from the end for expr3..exprN
+            n = len(exprs)
+            for k in range(n, 2, -1):
+                tk = temps[k-1]
+                assign_k = ASTNode(':=', children=[tk, exprs[k-1]])
+                comps = []
+                for i in range(0, k-1):
+                    comps.append(ASTNode('==', children=[tk, temps[i]], dtype='Bool'))
+                cond = comps[0]
+                for c in comps[1:]:
+                    cond = ASTNode('or', children=[cond, c], dtype='Bool')
+                then_true = ASTNode(':=', children=[target_var, ASTNode('true', dtype='Bool')])
+                body = ASTNode('Body', children=[then_true, else_branch])
+                if_node = ASTNode('IF', children=[cond, body])
+                else_branch = ASTNode('Block', children=[assign_k, if_node])
+
+            # Top IF compares first two temps
+            cond12 = ASTNode('==', children=[temps[0], temps[1]], dtype='Bool')
+            then_true = ASTNode(':=', children=[target_var, ASTNode('true', dtype='Bool')])
+            top_body = ASTNode('Body', children=[then_true, else_branch])
+            top_if = ASTNode('IF', children=[cond12, top_body])
+            return ASTNode('EqualExpressions', children=assigns_top + [top_if], dtype='Bool')
+
+        # rhs_node.children contains the original expressions list
+        exprs = rhs_node.children if isinstance(rhs_node.children, list) else [rhs_node.children]
+        node = build_equal_expr_chain(p[1], exprs)
+    else:
+        rhs_t = getattr(rhs_node, 'dtype', None)
+        if rhs_t is None:
+            rhs_t = 'Unknown'
+        ensure_assign_compatible(lhs_t, rhs_t, lineno, lhs_name)
+        node = ASTNode(':=', children=[p[1],p[3]], dtype=lhs_t)
     p[0] = node
 
 
@@ -404,52 +449,9 @@ def p_equal_expressions(p):
             if not (t == base or (is_numeric(t) and is_numeric(base))):
                 raise Exception(f"Error semántico (línea {lineno}): equalExpressions con tipos incompatibles {base} y {t}")
 
-    # If there's fewer than 2 expressions, result is always false (no equals pairs)
-    if len(exprs) < 2:
-        p[0] = ASTNode(str(0))
-        return
-
-    # Step 1: save each expression into an auxiliary temp variable to avoid
-    # re-evaluating complex expressions. We'll emit assignments like:
-    #   _t1 := <expr1>
-    #   _t2 := <expr2>
-    # ...
-    temp_names = []
-    assign_nodes = []
-    for e in exprs:
-        tname = new_temp()
-        temp_names.append(tname)
-        assign = ASTNode(':=', children=[tname, e])
-        assign_nodes.append(assign)
-
-    # Step 2: build equality comparisons for every pair (i < j): (_ti == _tj)
-    comparisons = []
-    for i in range(len(temp_names)):
-        for j in range(i+1, len(temp_names)):
-            left = temp_names[i]
-            right = temp_names[j]
-            comp = ASTNode('==', children=[left, right])
-            comparisons.append(comp)
-
-    # Step 3: fold all comparisons into a single boolean using OR: c1 OR c2 OR c3 ...
-    if not comparisons:
-        # should not happen given len(exprs) >= 2, but just in case
-        result_expr = ASTNode(str(0))
-    else:
-        result_expr = comparisons[0]
-        for c in comparisons[1:]:
-            result_expr = ASTNode('or', children=[result_expr, c])
-        result_expr = ASTNode('IF', children=[result_expr])
-
-    # Return a node that contains the assignments followed by the resulting boolean
-    # Consumers can treat this as a block of statements producing the boolean value.
-    children = []
-    # flatten assign_nodes into children
-    for a in assign_nodes:
-        children.append(a)
-    children.append(result_expr)
-
-    node = ASTNode('EqualExpressions', children=children, dtype='Bool')
+    # Carry the raw expressions; p_asignacion expands this into assignments
+    # and nested IFs that assign to the LHS boolean variable.
+    node = ASTNode('EqualExpressions', children=exprs, dtype='Bool')
     p[0] = node
     
 
