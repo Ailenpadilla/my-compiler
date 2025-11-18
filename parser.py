@@ -687,3 +687,4 @@ def ejecutar_parser(code):
                 print(f'Wrote AST PNG to {png_path.resolve()}')
     except Exception as e:
         print('Error while writing DOT/PNG:', e)
+    return ast

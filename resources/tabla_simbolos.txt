@@ -2,23 +2,54 @@ Nombre              Tipo de Dato   Valor
 -----------------------------------------------------------------
 a                                                                
 b                                                                
-_DateConverted      DateConverted  DateConverted                 
 c                                                                
 d                                                                
-e                                                                
-f                                                                
-g                                                                
-e                                                                
+isEqual                                                          
+a                                                                
+_10                 Int            10                            
+b                                                                
+_12                 Int            12                            
+c                                                                
+a                                                                
+c                                                                
+_a es mayor que c   String         a es mayor que c              
+_a no es mayor que cString         a no es mayor que c           
+a                                                                
+c                                                                
+a                                                                
+b                                                                
+_test -if anidado-  String         test -if anidado-             
+_a es mayor que c y bString         a es mayor que c y b          
+_10                 Int            10                            
+_8                  Int            8                             
+_8                  Int            8                             
+_10                 Int            10                            
+_test -and-         String         test -and-                    
+_a es mayor que c y bString         a es mayor que c y b          
+_10                 Int            10                            
+_12                 Int            12                            
+_8                  Int            8                             
+_10                 Int            10                            
+_test -or-          String         test -or-                     
+_a es mayor que c o bString         a es mayor que c o b          
+a                                                                
+c                                                                
+_test -not-         String         test -not-                    
+_a no es mayor que cString         a no es mayor que c           
+d                                                                
+_0                  Int            0                             
+d                                                                
+_3                  Int            3                             
+_hola               String         hola                          
+d                                                                
+d                                                                
+_1                  Int            1                             
+isEqual                                                          
 _1                  Int            1                             
 _2                  Int            2                             
 _1                  Int            1                             
 _5                  Int            5                             
-_55                 Int            55                            
+_3                  Int            3                             
 a                                                                
-b                                                                
-_20-09-2023         Date           20-09-2023                    
-e                                                                
-_equalExpressions is falseString         equalExpressions is false     
-a                                                                
-b                                                                
-_hola               String         hola                          
+isEqual                                                          
+_is equal expressionsString         is equal expressions          
