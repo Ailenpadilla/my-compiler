@@ -1,0 +1,25 @@
+#+ este es un comentario simple +#
+
+#+ este es un comentario
+ multilinea +#
+
+#+ Declaracion de variables +#
+
+init {
+    a : Int
+    b : DateConverted
+    c : String
+    d : Float
+    e, f, g : Bool
+}
+
+e:=equalExpressions(1+2,1*5,55,a)
+b:=convDate(20-09-2023)
+
+if (e) {
+    write("equalExpressions is false")
+}
+
+if (a>b) {
+    write("hola")
+}

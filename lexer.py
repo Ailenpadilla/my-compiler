@@ -15,8 +15,10 @@ reserved = {
     'Float': 'FLOAT',
     'Int': 'INT',
     'String': 'STRING',
+    'DateConverted': 'DATE_CONVERTED',
     'equalExpressions': 'EQUAL_EXPRESSIONS',
     'convDate': 'CONV_DATE',
+    'Bool': 'BOOLEAN',
 }
 
 tokens = [
@@ -75,14 +77,22 @@ def t_DATE(t):
     return t
 
 def t_N_ENTERO(t):
-    r'\d+'
+    r'-?\d+'
+    # Allow optional leading '-' for negative integers. The '-' token is still
+    # recognized separately when not followed by digits (e.g. as operator).
     t.value = int(t.value)
-    if not (0 <= t.value <= 32767):
-        raise Exception(f"Entero fuera de rango (16 bits) '{t.value}' en la linea: {t.lexer.lineno}")
+    if not (-32768 <= t.value <= 32767):
+        raise Exception(f"Entero fuera de rango (16 bits signed) '{t.value}' en la linea: {t.lexer.lineno}")
     return t
 
 def t_CADENA(t):
-    r'\"[^"\n]{0,50}\"'
+    r'\"([^"\n]*)\"'
+    # t.value includes the surrounding quotes, remove them for storage
+    raw = t.value[1:-1]
+    max_len = 50
+    if len(raw) > max_len:
+        raise Exception(f"Cadena demasiado larga (max {max_len}) '{raw}' en la linea: {t.lexer.lineno}")
+    t.value = raw
     return t
 
 
@@ -108,10 +118,8 @@ def t_error(t):
 lexer = lex.lex(reflags=re.DOTALL)
 
 
-def ejecutar_lexer():
-    path_lexter = Path('./resources/lexer_test.txt')
-    data = path_lexter.read_text()
-    lexer.input(data)
+def ejecutar_lexer(code):
+    lexer.input(code)
     tabla_simbolos = []
     while True:
         token = lexer.token()
@@ -122,12 +130,14 @@ def ejecutar_lexer():
         if token.type == 'VARIABLE':
             tabla_simbolos.append({'nombre': token.value, 'tipo': '', 'valor': ''})
         # Guardar constantes (nombre, tipo, valor)
-        elif token.type in ('N_ENTERO', 'N_FLOAT', 'CADENA', 'DATE'):
+        elif token.type in ('N_ENTERO', 'N_FLOAT', 'CADENA', 'DATE', 'DATE_CONVERTED'):
             tipo = {
                 'N_ENTERO': 'Int',
                 'N_FLOAT': 'Float',
                 'CADENA': 'String',
-                'DATE': 'Date'
+                'DATE': 'Date',
+                'DATE_CONVERTED': 'DateConverted',
+                'BOOLEAN': 'Bool'
             }[token.type]
             nombre_constante = f"_{token.value}"
             tabla_simbolos.append({'nombre': nombre_constante, 'tipo': tipo, 'valor': token.value})

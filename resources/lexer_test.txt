@@ -20,6 +20,7 @@
 >
 
 #+ VARIABLES / CONSTANTES +#
+-2555
 c
 d
 e
