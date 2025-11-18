@@ -7,15 +7,12 @@ d
 e                                                                
 isEqual                                                          
 cad                                                              
+_Ingrese el valor de a: String         Ingrese el valor de a:        
 a                                                                
-_10                 Int            10                            
+_Ingrese el valor de b: String         Ingrese el valor de b:        
 b                                                                
-_12                 Int            12                            
+_Ingrese el valor de c: String         Ingrese el valor de c:        
 c                                                                
-_3                  Int            3                             
-_Ingrese un numero: String         Ingrese un numero:            
-cad                                                              
-a                                                                
 a                                                                
 c                                                                
 _a es mayor que c   String         a es mayor que c              
@@ -26,16 +23,16 @@ a
 b                                                                
 _test -if anidado-  String         test -if anidado-             
 _a es mayor que c y bString         a es mayor que c y b          
-_10                 Int            10                            
-_8                  Int            8                             
-_8                  Int            8                             
-_10                 Int            10                            
+a                                                                
+b                                                                
+a                                                                
+c                                                                
 _test -and-         String         test -and-                    
 _a es mayor que c y bString         a es mayor que c y b          
-_10                 Int            10                            
-_12                 Int            12                            
-_8                  Int            8                             
-_10                 Int            10                            
+a                                                                
+b                                                                
+a                                                                
+c                                                                
 _test -or-          String         test -or-                     
 _a es mayor que c o bString         a es mayor que c o b          
 a                                                                

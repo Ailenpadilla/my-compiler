@@ -217,7 +217,7 @@ def p_asignacion(p):
                     comps.append(ASTNode('==', children=[tk, temps[i]], dtype='Bool'))
                 cond = comps[0]
                 for c in comps[1:]:
-                    cond = ASTNode('or', children=[cond, c], dtype='Bool')
+                    cond = ASTNode('OR', children=[cond, c], dtype='Bool')
                 then_true = ASTNode(':=', children=[target_var, ASTNode('true', dtype='Bool')])
                 body = ASTNode('Body', children=[then_true, else_branch])
                 if_node = ASTNode('IF', children=[cond, body])
@@ -354,7 +354,8 @@ def p_condicion(p):
             lit_true_right = ASTNode('true', dtype='Bool')
             left_cmp = ASTNode('==', children=[v1, lit_true_left], dtype='Bool')
             right_cmp = ASTNode('==', children=[v2, lit_true_right], dtype='Bool')
-            node = ASTNode(p[2], children=[left_cmp, right_cmp], dtype='Bool')
+            op_type = p.slice[2].type  # 'AND' or 'OR'
+            node = ASTNode(op_type, children=[left_cmp, right_cmp], dtype='Bool')
             p[0] = node
             return
         print(f'comparacion {p.slice[2].type} comparacion -> condicion')
@@ -366,7 +367,8 @@ def p_condicion(p):
             except Exception:
                 lineno = 0
             raise Exception(f"Error semántico (línea {lineno}): operadores lógicos requieren operandos booleanos")
-        node = ASTNode(p[2], children=[p[1], p[3]], dtype='Bool')
+        op_type = p.slice[2].type  # 'AND' or 'OR'
+        node = ASTNode(op_type, children=[p[1], p[3]], dtype='Bool')
     elif len(p) == 3:
         # NOT of comparison or NOT of boolean variable
         if p.slice[2].type == 'VARIABLE':

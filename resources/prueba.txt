@@ -12,14 +12,12 @@ init {
     cad: String
 }
 
-a:= 10
-b:= 12
-c:= 3
-
-write("Ingrese un numero: ")
-read(cad)
-
-write(a)
+write("Ingrese el valor de a: ")
+read(a)
+write("Ingrese el valor de b: ")
+read(b)
+write("Ingrese el valor de c: ")
+read(c)
 
 #+ If y condiciones +#
 
@@ -39,13 +37,13 @@ if (a>c) {
 }
 
 #+ and +#
-if (10>8 and 8>10) {
+if (a>b and a>c) {
     write("test -and-")
     write("a es mayor que c y b")
 }
 
 #+ or +#
-if (10>12 or 8>10) {
+if (a>b or a>c) {
     write("test -or-")
     write("a es mayor que c o b")
 }
