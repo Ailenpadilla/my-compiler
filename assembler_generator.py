@@ -110,11 +110,42 @@ def generate_asembler(ast_root) -> Path:
         else:
             code.append(f'    ; TODO read unsupported type for {v}')
 
+    # Reusable buffer for printing DateConverted without commas
+    date_buf_added = {'added': False}
+
     def emit_write_var(varname: str):
         t = SEM.symbols.get(varname, {}).get('tipo', '')
         v = sanitize_label(varname)
-        if t == 'Int' or t == 'DateConverted':
+        if t == 'Int':
             code.append(f'    DisplayInteger {v}')
+            code.append('    newLine 1')
+        elif t == 'DateConverted':
+            # Print YYYYMMDD without commas
+            if not date_buf_added['added']:
+                data_lines.append("    DC_BUF           db  9 dup (?),\'$\'")
+                date_buf_added['added'] = True
+            code.append(f'    mov eax, dword ptr {v}')
+            code.append('    mov ebx, 10000000')
+            code.append('    mov ecx, 8')
+            code.append('    lea edi, DC_BUF')
+            code.append('DC_PRINT_LOOP:')
+            code.append('    xor edx, edx')
+            code.append('    div ebx')
+            code.append("    add al, '0'")
+            code.append('    mov [edi], al')
+            code.append('    inc edi')
+            code.append('    mov esi, edx')
+            code.append('    mov eax, ebx')
+            code.append('    xor edx, edx')
+            code.append('    mov ebp, 10')
+            code.append('    div ebp')
+            code.append('    mov ebx, eax')
+            code.append('    mov eax, esi')
+            code.append('    loop DC_PRINT_LOOP')
+            code.append("    mov byte ptr [edi], '$'")
+            code.append('    mov dx,OFFSET DC_BUF')
+            code.append('    mov ah,9')
+            code.append('    int 21h')
             code.append('    newLine 1')
         elif t == 'Float':
             # default to 2 decimal places
@@ -198,6 +229,36 @@ def generate_asembler(ast_root) -> Path:
         # Fallback
         code.append(f'    ; TODO assign unsupported RHS for {ld}')
 
+    def try_fold_convdate_pattern(n: ASTNode):
+        # Detect pattern: (anio*10000) + ((mes*100) + dia) where all are literals
+        try:
+            if not isinstance(n, ASTNode) or n.nodetype != '+' or len(n.children) != 2:
+                return None
+            left, right = n.children
+            if not (isinstance(left, ASTNode) and left.nodetype == '*' and len(left.children) == 2):
+                return None
+            ly, lconst = left.children
+            if not (isinstance(ly, ASTNode) and isinstance(lconst, ASTNode)):
+                return None
+            if not (lconst.nodetype == '10000' and ly.nodetype.isdigit()):
+                return None
+            if not (isinstance(right, ASTNode) and right.nodetype == '+' and len(right.children) == 2):
+                return None
+            rleft, rday = right.children
+            if not (isinstance(rleft, ASTNode) and rleft.nodetype == '*' and len(rleft.children) == 2):
+                return None
+            rmonth, rconst = rleft.children
+            if not (isinstance(rmonth, ASTNode) and isinstance(rconst, ASTNode)):
+                return None
+            if not (rconst.nodetype == '100' and rmonth.nodetype.isdigit() and isinstance(rday, ASTNode) and rday.nodetype.isdigit()):
+                return None
+            anio = int(ly.nodetype)
+            mes = int(rmonth.nodetype)
+            dia = int(rday.nodetype)
+            return anio * 10000 + mes * 100 + dia
+        except Exception:
+            return None
+
     def eval_int(n: ASTNode):
         # Result in EAX
         if not isinstance(n, ASTNode):
@@ -209,6 +270,20 @@ def generate_asembler(ast_root) -> Path:
             except Exception:
                 pass
         nt = n.nodetype if isinstance(n, ASTNode) else str(n)
+        # Direct ConvDate literal node
+        if isinstance(n, ASTNode) and nt == 'ConvDate':
+            try:
+                dia, mes, anio = map(int, str(getattr(n, 'value', '')).split('-'))
+                ival = anio * 10000 + mes * 100 + dia
+                code.append(f'    mov eax, {ival}')
+                return
+            except Exception:
+                pass
+        # convDate arithmetic folding
+        fv = try_fold_convdate_pattern(n)
+        if fv is not None:
+            code.append(f'    mov eax, {fv}')
+            return
         # variable
         if (isinstance(n, ASTNode) and not n.children and nt in SEM.symbols) or \
            (not isinstance(n, ASTNode) and (nt in SEM.symbols or nt.startswith('_t'))):

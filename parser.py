@@ -493,10 +493,7 @@ def p_conv_date(p):
     '''conv_date : CONV_DATE A_PARENTESIS DATE C_PARENTESIS
     '''
     print(f'convDate ( DATE ) -> conv_date')
-    # Build an arithmetic AST equivalent to: (anio * 10000) + (mes * 100) + dia
-    # This follows the project's convention of representing expressions as
-    # ASTNodes with operators '+', '*', etc., so the code generator can lower
-    # the arithmetic like any other expression.
+    # Fold convDate at parse time to a literal YYYYMMDD (DateConverted)
     raw = p[3]
     try:
         dia, mes, anio = map(int, raw.split('-'))
@@ -509,26 +506,13 @@ def p_conv_date(p):
             if not is_leap:
                 raise ValueError(f"Fecha inválida (no es año bisiesto) '{raw}'")
 
-        # Create numeric AST nodes for year, month, day and the constants
-        node_year = ASTNode(str(anio), dtype='Int')
-        node_month = ASTNode(str(mes), dtype='Int')
-        node_day = ASTNode(str(dia), dtype='Int')
-        node_10000 = ASTNode(str(10000), dtype='Int')
-        node_100 = ASTNode(str(100), dtype='Int')
-
-        # anio * 10000
-        mul_year = ASTNode('*', children=[node_year, node_10000], dtype='Int')
-        # mes * 100
-        mul_month = ASTNode('*', children=[node_month, node_100], dtype='Int')
-        # (mes * 100) + dia
-        add_month_day = ASTNode('+', children=[mul_month, node_day], dtype='Int')
-        # (anio * 10000) + ((mes * 100) + dia)
-        total = ASTNode('+', children=[mul_year, add_month_day], dtype='DateConverted')
-        p[0] = total
+        # Fold convDate at parse time to YYYYMMDD integer literal
+        yyyymmdd = anio * 10000 + mes * 100 + dia
+        p[0] = ASTNode(str(yyyymmdd), dtype='DateConverted')
+        return
     except Exception as e:
-        # On failure, fall back to a ConvDate node so later stages can
-        # implement runtime conversion or raise an error.
-        print('Warning: convDate -> building arithmetic AST failed:', e)
+        # On failure, fall back to a ConvDate node
+        print('Warning: convDate -> folding failed:', e)
         node = ASTNode('ConvDate', value=raw, dtype='DateConverted')
         p[0] = node
 

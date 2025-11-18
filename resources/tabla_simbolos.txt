@@ -8,6 +8,8 @@ solution
 e                                                                
 isEqual                                                          
 cad                                                              
+date                                                             
+_DateConverted      DateConverted  DateConverted                 
 _Ingrese el valor de a: String         Ingrese el valor de a:        
 a                                                                
 _Ingrese el valor de b: String         Ingrese el valor de b:        
@@ -65,3 +67,6 @@ e
 e                                                                
 isEqual                                                          
 _is equal expressionsString         is equal expressions          
+date                                                             
+_10-11-2025         Date           10-11-2025                    
+date                                                             

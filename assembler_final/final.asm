@@ -18,10 +18,12 @@ MAXTEXTSIZE equ 50
     e                dd  ?
     isEqual          db  ?
     cad              db  MAXTEXTSIZE dup (?),'$'
+    date             dd  ?
     _t1              dd  ?
     _t2              dd  ?
     _t3              dd  ?
     _t4              dd  ?
+    DC_BUF           db  9 dup (?),'$'
     T_msg1           db  "Ingrese el valor de a: ",'$'
     T_msg2           db  "Ingrese el valor de b: ",'$'
     T_msg3           db  "Ingrese el valor de c: ",'$'
@@ -335,6 +337,30 @@ LT_36:
     JMP LE_38
 LF_37:
 LE_38:
+    mov dword ptr date, 20251110
+    mov eax, dword ptr date
+    mov ebx, 10000000
+    mov ecx, 8
+    lea edi, DC_BUF
+DC_PRINT_LOOP:
+    xor edx, edx
+    div ebx
+    add al, '0'
+    mov [edi], al
+    inc edi
+    mov esi, edx
+    mov eax, ebx
+    xor edx, edx
+    mov ebp, 10
+    div ebp
+    mov ebx, eax
+    mov eax, esi
+    loop DC_PRINT_LOOP
+    mov byte ptr [edi], '$'
+    mov dx,OFFSET DC_BUF
+    mov ah,9
+    int 21h
+    newLine 1
 
     mov dx,OFFSET _NEWLINE
     mov ah,09

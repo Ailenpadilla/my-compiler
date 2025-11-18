@@ -10,6 +10,7 @@ init {
     e: Float
     isEqual: Bool
     cad: String
+    date: DateConverted
 }
 
 write("Ingrese el valor de a: ")
@@ -73,3 +74,6 @@ if(isEqual) {
     write("is equal expressions")
 }
 
+date:= convDate(10-11-2025)
+
+write(date)
