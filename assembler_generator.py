@@ -81,6 +81,9 @@ def generate_asembler(ast_root) -> Path:
         code.append('    int 21h')
         code.append('    newLine 1')
 
+    # Track if we added a temp for Bool reads
+    read_bool_tmp_added = {'v': False}
+
     def emit_read_var(varname: str):
         t = SEM.symbols.get(varname, {}).get('tipo', '')
         v = sanitize_label(varname)
@@ -88,9 +91,38 @@ def generate_asembler(ast_root) -> Path:
             code.append(f'    GetInteger {v}')
         elif t == 'Float':
             code.append(f'    GetFloat {v}')
+        elif t == 'String':
+            code.append(f'    getString {v}')
+        elif t == 'Bool':
+            # Read as integer into temp, then store 0/1 into the bool var
+            if not read_bool_tmp_added['v']:
+                data_lines.append(f'    READ_BOOL_TMP   dd  ?')
+                read_bool_tmp_added['v'] = True
+            code.append(f'    GetInteger READ_BOOL_TMP')
+            lbl_set = new_label('LBR')
+            code.append(f'    mov eax, dword ptr READ_BOOL_TMP')
+            code.append('    cmp eax, 0')
+            code.append('    mov al, 0')
+            code.append(f'    JE {lbl_set}')
+            code.append('    mov al, 1')
+            code.append(f'{lbl_set}:')
+            code.append(f'    mov byte ptr {v}, al')
         else:
-            # TODO: other types (String/Bool) not yet supported for read
             code.append(f'    ; TODO read unsupported type for {v}')
+
+    def emit_write_var(varname: str):
+        t = SEM.symbols.get(varname, {}).get('tipo', '')
+        v = sanitize_label(varname)
+        if t == 'Int' or t == 'DateConverted':
+            code.append(f'    DisplayInteger {v}')
+            code.append('    newLine 1')
+        elif t == 'Float':
+            # default to 2 decimal places
+            code.append(f'    DisplayFloat {v}, 2')
+            code.append('    newLine 1')
+        else:
+            # Unsupported types for write(var): only numeric allowed per spec
+            code.append(f'    ; write unsupported type {t} for {v}')
 
     def emit_assign(lhs: str, rhs: Any):
         lt = SEM.symbols.get(lhs, {}).get('tipo', '')
@@ -367,9 +399,15 @@ def generate_asembler(ast_root) -> Path:
                 for ch in node.children:
                     walk(ch)
             elif node.nodetype == 'WRITE':
-                # children ['write', text]
-                if len(node.children) >= 2 and isinstance(node.children[1], str):
-                    emit_write_string(node.children[1])
+                # children ['write', arg] where arg can be a string literal or a variable name
+                if len(node.children) >= 2:
+                    arg = node.children[1]
+                    if isinstance(arg, str) and arg in SEM.symbols:
+                        # variable
+                        emit_write_var(arg)
+                    elif isinstance(arg, str):
+                        # string literal
+                        emit_write_string(arg)
             elif node.nodetype == 'READ':
                 if len(node.children) >= 2 and isinstance(node.children[1], str):
                     emit_read_var(node.children[1])

@@ -14,23 +14,26 @@ MAXTEXTSIZE equ 50
     b                dd  ?
     c                dd  ?
     d                dd  ?
+    e                dd  ?
     isEqual          db  ?
+    cad              db  MAXTEXTSIZE dup (?),'$'
     _t1              dd  ?
     _t2              dd  ?
     _t3              dd  ?
     _t4              dd  ?
-    T_msg1           db  "a es mayor que c",'$'
-    T_msg2           db  "a no es mayor que c",'$'
-    T_msg3           db  "test -if anidado-",'$'
-    T_msg4           db  "a es mayor que c y b",'$'
-    T_msg5           db  "test -and-",'$'
-    T_msg6           db  "a es mayor que c y b",'$'
-    T_msg7           db  "test -or-",'$'
-    T_msg8           db  "a es mayor que c o b",'$'
-    T_msg9           db  "test -not-",'$'
-    T_msg10          db  "a no es mayor que c",'$'
-    T_msg11          db  "hola",'$'
-    T_msg12          db  "is equal expressions",'$'
+    T_msg1           db  "Ingrese un numero: ",'$'
+    T_msg2           db  "a es mayor que c",'$'
+    T_msg3           db  "a no es mayor que c",'$'
+    T_msg4           db  "test -if anidado-",'$'
+    T_msg5           db  "a es mayor que c y b",'$'
+    T_msg6           db  "test -and-",'$'
+    T_msg7           db  "a es mayor que c y b",'$'
+    T_msg8           db  "test -or-",'$'
+    T_msg9           db  "a es mayor que c o b",'$'
+    T_msg10          db  "test -not-",'$'
+    T_msg11          db  "a no es mayor que c",'$'
+    T_msg12          db  "hola",'$'
+    T_msg13          db  "is equal expressions",'$'
 
 .CODE
 START:
@@ -40,7 +43,14 @@ START:
 
     mov dword ptr a, 10
     mov dword ptr b, 12
-    GetInteger c
+    mov dword ptr c, 3
+    mov dx,OFFSET T_msg1
+    mov ah,9
+    int 21h
+    newLine 1
+    getString cad
+    DisplayInteger a
+    newLine 1
     mov eax, dword ptr a
     push eax
     mov eax, dword ptr c
@@ -50,13 +60,13 @@ START:
     JG LT_1
     JMP LF_2
 LT_1:
-    mov dx,OFFSET T_msg1
+    mov dx,OFFSET T_msg2
     mov ah,9
     int 21h
     newLine 1
     JMP LE_3
 LF_2:
-    mov dx,OFFSET T_msg2
+    mov dx,OFFSET T_msg3
     mov ah,9
     int 21h
     newLine 1
@@ -79,11 +89,11 @@ LT_4:
     JG LT_7
     JMP LF_8
 LT_7:
-    mov dx,OFFSET T_msg3
+    mov dx,OFFSET T_msg4
     mov ah,9
     int 21h
     newLine 1
-    mov dx,OFFSET T_msg4
+    mov dx,OFFSET T_msg5
     mov ah,9
     int 21h
     newLine 1
@@ -95,11 +105,11 @@ LF_5:
 LE_6:
     ; TODO unsupported condition
 LT_10:
-    mov dx,OFFSET T_msg5
+    mov dx,OFFSET T_msg6
     mov ah,9
     int 21h
     newLine 1
-    mov dx,OFFSET T_msg6
+    mov dx,OFFSET T_msg7
     mov ah,9
     int 21h
     newLine 1
@@ -108,11 +118,11 @@ LF_11:
 LE_12:
     ; TODO unsupported condition
 LT_13:
-    mov dx,OFFSET T_msg7
+    mov dx,OFFSET T_msg8
     mov ah,9
     int 21h
     newLine 1
-    mov dx,OFFSET T_msg8
+    mov dx,OFFSET T_msg9
     mov ah,9
     int 21h
     newLine 1
@@ -128,11 +138,11 @@ LE_15:
     JLE LT_16
     JMP LF_17
 LT_16:
-    mov dx,OFFSET T_msg9
+    mov dx,OFFSET T_msg10
     mov ah,9
     int 21h
     newLine 1
-    mov dx,OFFSET T_msg10
+    mov dx,OFFSET T_msg11
     mov ah,9
     int 21h
     newLine 1
@@ -150,7 +160,7 @@ LW_19:
     JL LWB_20
     JMP LWE_21
 LWB_20:
-    mov dx,OFFSET T_msg11
+    mov dx,OFFSET T_msg12
     mov ah,9
     int 21h
     newLine 1
@@ -168,7 +178,7 @@ LWE_21:
     JE LT_22
     JMP LF_23
 LT_22:
-    mov dx,OFFSET T_msg12
+    mov dx,OFFSET T_msg13
     mov ah,9
     int 21h
     newLine 1

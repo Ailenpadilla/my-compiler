@@ -7,13 +7,19 @@
 
 init {
     a, b, c, d : Int
+    e: Float
     isEqual: Bool
+    cad: String
 }
 
 a:= 10
 b:= 12
+c:= 3
 
-read(c)
+write("Ingrese un numero: ")
+read(cad)
+
+write(a)
 
 #+ If y condiciones +#
 

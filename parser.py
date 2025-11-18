@@ -85,9 +85,25 @@ def p_sentencia(p):
     
 def p_write(p):
     '''write : WRITE A_PARENTESIS CADENA C_PARENTESIS
+              | WRITE A_PARENTESIS VARIABLE C_PARENTESIS
     '''
-    print(f'write ( CADENA ) -> write')
-    node = ASTNode('WRITE', children=['write',p[3]], dtype=None)
+    # write can print a string literal or a variable's value
+    if p.slice[3].type == 'CADENA':
+        print(f'write ( CADENA ) -> write')
+        node = ASTNode('WRITE', children=['write', p[3]], dtype=None)
+    else:
+        # VARIABLE case: ensure declared and only allow numeric variables
+        print(f'write ( VARIABLE ) -> write')
+        try:
+            lineno = p.lineno(3)
+        except Exception:
+            lineno = 0
+        vname = p[3]
+        vtype = SEM.ensure_declared(vname, lineno)
+        if not is_numeric(vtype):
+            raise Exception(
+                f"Error semántico (línea {lineno}): write solo acepta variables numéricas, recibió {vtype}")
+        node = ASTNode('WRITE', children=['write', vname], dtype=None)
     p[0] = node
     
     
