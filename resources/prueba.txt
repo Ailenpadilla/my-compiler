@@ -6,7 +6,7 @@
 #+ Declaracion de variables +#
 
 init {
-    a, b, c, d : Int
+    a, b, c, d, solution : Int
     e: Float
     isEqual: Bool
     cad: String
@@ -18,7 +18,13 @@ write("Ingrese el valor de b: ")
 read(b)
 write("Ingrese el valor de c: ")
 read(c)
+write("Ingrese el valor de e: ")
+read(e)
 
+write("a* (b - c) = ")
+solution:=a* (b - c)
+
+write(solution)
 #+ If y condiciones +#
 
 #+ simple +#
@@ -61,8 +67,9 @@ while (d<3) {
     d:= d + 1
 }
 
-isEqual:= equalExpressions(1+2,1*5,a)
+isEqual:= equalExpressions(1+2,1*5,e,e)
 
 if(isEqual) {
     write("is equal expressions")
 }
+
