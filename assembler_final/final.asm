@@ -20,7 +20,6 @@ MAXTEXTSIZE equ 50
     _t1              dd  ?
     _t2              dd  ?
     _t3              dd  ?
-    _t4              dd  ?
     T_msg1           db  "Ingrese el valor de a: ",'$'
     T_msg2           db  "Ingrese el valor de b: ",'$'
     T_msg3           db  "Ingrese el valor de c: ",'$'
@@ -212,18 +211,70 @@ LWB_22:
     mov dword ptr d, eax
     JMP LW_21
 LWE_23:
-    mov al, byte ptr isEqual
-    cmp al, 1
+    mov eax, 1
+    push eax
+    mov eax, 2
+    mov ebx, eax
+    pop eax
+    add eax, ebx
+    mov dword ptr _t1, eax
+    mov eax, 1
+    push eax
+    mov eax, 5
+    mov ebx, eax
+    pop eax
+    imul eax, ebx
+    mov dword ptr _t2, eax
+    mov eax, dword ptr _t1
+    push eax
+    mov eax, dword ptr _t2
+    mov ebx, eax
+    pop eax
+    cmp eax, ebx
     JE LT_24
     JMP LF_25
 LT_24:
+    mov byte ptr isEqual, 1
+    JMP LE_26
+LF_25:
+    mov eax, dword ptr a
+    mov dword ptr _t3, eax
+    mov eax, dword ptr _t3
+    push eax
+    mov eax, dword ptr _t1
+    mov ebx, eax
+    pop eax
+    cmp eax, ebx
+    JE LT_27
+    JMP L_30
+L_30:
+    mov eax, dword ptr _t3
+    push eax
+    mov eax, dword ptr _t2
+    mov ebx, eax
+    pop eax
+    cmp eax, ebx
+    JE LT_27
+    JMP LF_28
+LT_27:
+    mov byte ptr isEqual, 1
+    JMP LE_29
+LF_28:
+    mov byte ptr isEqual, 0
+LE_29:
+LE_26:
+    mov al, byte ptr isEqual
+    cmp al, 1
+    JE LT_31
+    JMP LF_32
+LT_31:
     mov dx,OFFSET T_msg15
     mov ah,9
     int 21h
     newLine 1
-    JMP LE_26
-LF_25:
-LE_26:
+    JMP LE_33
+LF_32:
+LE_33:
 
     mov dx,OFFSET _NEWLINE
     mov ah,09

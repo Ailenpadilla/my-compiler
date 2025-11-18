@@ -61,7 +61,7 @@ while (d<3) {
     d:= d + 1
 }
 
-isEqual:= equalExpressions(1+2,1*5,3,a)
+isEqual:= equalExpressions(1+2,1*5,a)
 
 if(isEqual) {
     write("is equal expressions")

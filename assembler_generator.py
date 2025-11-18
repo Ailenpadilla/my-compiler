@@ -133,6 +133,19 @@ def generate_asembler(ast_root) -> Path:
         else:
             rn = str(rhs)
 
+        # Assign to temporary (_t*) without a declared type: infer from RHS
+        if isinstance(lhs, str) and lhs.startswith('_t') and not lt:
+            rdt = getattr(rhs, 'dtype', None)
+            if rdt == 'Float':
+                eval_float(rhs)
+                code.append(f'    fstp {ld}')
+                return
+            else:
+                # default to integer move
+                eval_int(rhs)
+                code.append(f'    mov dword ptr {ld}, eax')
+                return
+
         # Bool := true/false
         if lt == 'Bool' and isinstance(rhs, ASTNode) and rhs.nodetype in ('true', 'false'):
             val = '1' if rhs.nodetype == 'true' else '0'
@@ -197,7 +210,8 @@ def generate_asembler(ast_root) -> Path:
                 pass
         nt = n.nodetype if isinstance(n, ASTNode) else str(n)
         # variable
-        if isinstance(n, ASTNode) and not n.children and nt in SEM.symbols:
+        if (isinstance(n, ASTNode) and not n.children and nt in SEM.symbols) or \
+           (not isinstance(n, ASTNode) and (nt in SEM.symbols or nt.startswith('_t'))):
             code.append(f'    mov eax, dword ptr {sanitize_label(nt)}')
             return
         # literal int
@@ -240,7 +254,8 @@ def generate_asembler(ast_root) -> Path:
         # Leave result on ST(0)
         nt = n.nodetype if isinstance(n, ASTNode) else str(n)
         # variable
-        if isinstance(n, ASTNode) and not n.children and nt in SEM.symbols:
+        if (isinstance(n, ASTNode) and not n.children and nt in SEM.symbols) or \
+           (not isinstance(n, ASTNode) and (nt in SEM.symbols or nt.startswith('_t'))):
             code.append(f'    fld {sanitize_label(nt)}')
             return
         # literal float
@@ -418,10 +433,14 @@ def generate_asembler(ast_root) -> Path:
                     # Assign expression results
                     ltype = SEM.symbols.get(lhs, {}).get('tipo', '')
                     if isinstance(rhs, ASTNode) and rhs.nodetype in ('+', '-', '*', '/'):
-                        if ltype == 'Int' or ltype == 'DateConverted':
+                        # For temporaries (_t*), infer from RHS dtype if LHS undeclared
+                        eff_type = ltype
+                        if (not eff_type) and isinstance(lhs, str) and lhs.startswith('_t'):
+                            eff_type = getattr(rhs, 'dtype', '')
+                        if eff_type == 'Int' or eff_type == 'DateConverted':
                             eval_int(rhs)
                             code.append(f'    mov dword ptr {sanitize_label(lhs)}, eax')
-                        elif ltype == 'Float':
+                        elif eff_type == 'Float':
                             eval_float(rhs)
                             code.append(f'    fstp {sanitize_label(lhs)}')
                         else:
@@ -432,6 +451,9 @@ def generate_asembler(ast_root) -> Path:
                 emit_if(node)
             elif node.nodetype == 'While':
                 emit_while(node)
+            elif node.nodetype == 'EqualExpressions':
+                for ch in node.children:
+                    walk(ch)
             else:
                 # TODO: support IF/While, arithmetic, comparisons
                 pass
