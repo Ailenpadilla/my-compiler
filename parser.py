@@ -85,9 +85,25 @@ def p_sentencia(p):
     
 def p_write(p):
     '''write : WRITE A_PARENTESIS CADENA C_PARENTESIS
+              | WRITE A_PARENTESIS VARIABLE C_PARENTESIS
     '''
-    print(f'write ( CADENA ) -> write')
-    node = ASTNode('WRITE', children=['write',p[3]], dtype=None)
+    # write can print a string literal or a variable's value
+    if p.slice[3].type == 'CADENA':
+        print(f'write ( CADENA ) -> write')
+        node = ASTNode('WRITE', children=['write', p[3]], dtype=None)
+    else:
+        # VARIABLE case: ensure declared and only allow numeric variables
+        print(f'write ( VARIABLE ) -> write')
+        try:
+            lineno = p.lineno(3)
+        except Exception:
+            lineno = 0
+        vname = p[3]
+        vtype = SEM.ensure_declared(vname, lineno)
+        if not is_numeric(vtype):
+            raise Exception(
+                f"Error semántico (línea {lineno}): write solo acepta variables numéricas, recibió {vtype}")
+        node = ASTNode('WRITE', children=['write', vname], dtype=None)
     p[0] = node
     
     
@@ -201,7 +217,7 @@ def p_asignacion(p):
                     comps.append(ASTNode('==', children=[tk, temps[i]], dtype='Bool'))
                 cond = comps[0]
                 for c in comps[1:]:
-                    cond = ASTNode('or', children=[cond, c], dtype='Bool')
+                    cond = ASTNode('OR', children=[cond, c], dtype='Bool')
                 then_true = ASTNode(':=', children=[target_var, ASTNode('true', dtype='Bool')])
                 body = ASTNode('Body', children=[then_true, else_branch])
                 if_node = ASTNode('IF', children=[cond, body])
@@ -338,7 +354,8 @@ def p_condicion(p):
             lit_true_right = ASTNode('true', dtype='Bool')
             left_cmp = ASTNode('==', children=[v1, lit_true_left], dtype='Bool')
             right_cmp = ASTNode('==', children=[v2, lit_true_right], dtype='Bool')
-            node = ASTNode(p[2], children=[left_cmp, right_cmp], dtype='Bool')
+            op_type = p.slice[2].type  # 'AND' or 'OR'
+            node = ASTNode(op_type, children=[left_cmp, right_cmp], dtype='Bool')
             p[0] = node
             return
         print(f'comparacion {p.slice[2].type} comparacion -> condicion')
@@ -350,7 +367,8 @@ def p_condicion(p):
             except Exception:
                 lineno = 0
             raise Exception(f"Error semántico (línea {lineno}): operadores lógicos requieren operandos booleanos")
-        node = ASTNode(p[2], children=[p[1], p[3]], dtype='Bool')
+        op_type = p.slice[2].type  # 'AND' or 'OR'
+        node = ASTNode(op_type, children=[p[1], p[3]], dtype='Bool')
     elif len(p) == 3:
         # NOT of comparison or NOT of boolean variable
         if p.slice[2].type == 'VARIABLE':
@@ -475,10 +493,7 @@ def p_conv_date(p):
     '''conv_date : CONV_DATE A_PARENTESIS DATE C_PARENTESIS
     '''
     print(f'convDate ( DATE ) -> conv_date')
-    # Build an arithmetic AST equivalent to: (anio * 10000) + (mes * 100) + dia
-    # This follows the project's convention of representing expressions as
-    # ASTNodes with operators '+', '*', etc., so the code generator can lower
-    # the arithmetic like any other expression.
+    # Fold convDate at parse time to a literal YYYYMMDD (DateConverted)
     raw = p[3]
     try:
         dia, mes, anio = map(int, raw.split('-'))
@@ -491,26 +506,13 @@ def p_conv_date(p):
             if not is_leap:
                 raise ValueError(f"Fecha inválida (no es año bisiesto) '{raw}'")
 
-        # Create numeric AST nodes for year, month, day and the constants
-        node_year = ASTNode(str(anio), dtype='Int')
-        node_month = ASTNode(str(mes), dtype='Int')
-        node_day = ASTNode(str(dia), dtype='Int')
-        node_10000 = ASTNode(str(10000), dtype='Int')
-        node_100 = ASTNode(str(100), dtype='Int')
-
-        # anio * 10000
-        mul_year = ASTNode('*', children=[node_year, node_10000], dtype='Int')
-        # mes * 100
-        mul_month = ASTNode('*', children=[node_month, node_100], dtype='Int')
-        # (mes * 100) + dia
-        add_month_day = ASTNode('+', children=[mul_month, node_day], dtype='Int')
-        # (anio * 10000) + ((mes * 100) + dia)
-        total = ASTNode('+', children=[mul_year, add_month_day], dtype='DateConverted')
-        p[0] = total
+        # Fold convDate at parse time to YYYYMMDD integer literal
+        yyyymmdd = anio * 10000 + mes * 100 + dia
+        p[0] = ASTNode(str(yyyymmdd), dtype='DateConverted')
+        return
     except Exception as e:
-        # On failure, fall back to a ConvDate node so later stages can
-        # implement runtime conversion or raise an error.
-        print('Warning: convDate -> building arithmetic AST failed:', e)
+        # On failure, fall back to a ConvDate node
+        print('Warning: convDate -> folding failed:', e)
         node = ASTNode('ConvDate', value=raw, dtype='DateConverted')
         p[0] = node
 
@@ -687,3 +689,4 @@ def ejecutar_parser(code):
                 print(f'Wrote AST PNG to {png_path.resolve()}')
     except Exception as e:
         print('Error while writing DOT/PNG:', e)
+    return ast

@@ -1,10 +1,15 @@
 PATH=C:\TASM;
 
+rem Assemble runtime support and generated program
 tasm numbers.asm
-tasm ejemplo.asm
-tlink ejemplo.obj numbers.obj
-ejemplo.exe
-del ejemplo.obj 
+tasm final.asm
+
+rem Link final with numbers support
+tlink final.obj numbers.obj
+
+rem Run and cleanup
+final.exe
+del final.obj 
 del numbers.obj 
-del ejemplo.exe
-del ejemplo.map
+del final.exe
+del final.map

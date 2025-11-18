@@ -6,20 +6,74 @@
 #+ Declaracion de variables +#
 
 init {
-    a : Int
-    b : DateConverted
-    c : String
-    d : Float
-    e, f, g : Bool
+    a, b, c, d, solution : Int
+    e: Float
+    isEqual: Bool
+    cad: String
+    date: DateConverted
 }
 
-e:=equalExpressions(1+2,1*5,55,a)
-b:=convDate(20-09-2023)
+write("Ingrese el valor de a: ")
+read(a)
+write("Ingrese el valor de b: ")
+read(b)
+write("Ingrese el valor de c: ")
+read(c)
+write("Ingrese el valor de e: ")
+read(e)
 
-if (e) {
-    write("equalExpressions is false")
+write("a* (b - c) = ")
+solution:=a* (b - c)
+
+write(solution)
+#+ If y condiciones +#
+
+#+ simple +#
+if (a>c) {
+    write("a es mayor que c")
+} else {
+    write("a no es mayor que c")
 }
 
-if (a>b) {
+#+ anidado +#
+if (a>c) {
+    if (a>b) {
+        write("test -if anidado-")
+        write("a es mayor que c y b")
+    }
+}
+
+#+ and +#
+if (a>b and a>c) {
+    write("test -and-")
+    write("a es mayor que c y b")
+}
+
+#+ or +#
+if (a>b or a>c) {
+    write("test -or-")
+    write("a es mayor que c o b")
+}
+
+#+ not +#
+if (not a>c) {
+    write("test -not-")
+    write("a no es mayor que c")
+}
+
+#+ while +# 
+d:=0
+while (d<3) {
     write("hola")
+    d:= d + 1
 }
+
+isEqual:= equalExpressions(1+2,1*5,e,e)
+
+if(isEqual) {
+    write("is equal expressions")
+}
+
+date:= convDate(10-11-2025)
+
+write(date)
